@@ -406,7 +406,7 @@ export default function App() {
       alterationDetails: data.get('alterationDetails'),
       placingStatus: true,
       isOn: true,
-      productStatus: (!selectedOrderForKarigar.productStatus || selectedOrderForKarigar.productStatus.includes('Not Assign')) ? 'Under Process' : selectedOrderForKarigar.productStatus
+      productStatus: 'Under Process'
     };
 
     setOrders(prev => prev.map(o => (o.orderSheetNo === updatedOrder.orderSheetNo && o.tagNumber === updatedOrder.tagNumber) ? updatedOrder : o));
