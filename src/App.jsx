@@ -18,13 +18,23 @@ import {
   Sparkles,
   Layers,
   Copy,
-  Users
+  Users,
+  ShieldAlert
 } from 'lucide-react';
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders');
+  
+  // Role & User Session State for Security
+  const [currentUserRole, setCurrentUserRole] = useState(() => {
+    return localStorage.getItem('namah_user_role') || 'Salesperson';
+  });
+  const [currentUserName, setCurrentUserName] = useState(() => {
+    return localStorage.getItem('namah_user_name') || 'Sohil';
+  });
+
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('namah_local_orders');
     return saved ? JSON.parse(saved) : [];
@@ -66,7 +76,7 @@ export default function App() {
     contactNumber: '',
     orderType: '',
     orderSheetNo: '',
-    salesPerson: '',
+    salesPerson: currentUserName,
     jewelleryItem: '',
     tagNumber: '',
     productImageLink: '',
@@ -81,7 +91,7 @@ export default function App() {
     orderDescription: '',
     orderTakenDate: new Date().toISOString().split('T')[0],
     deliveryDate: '',
-    orderPerson: '',
+    orderPerson: 'Amardeep',
     specialRemarks: ''
   });
 
@@ -163,6 +173,14 @@ export default function App() {
     localStorage.setItem('namah_local_orders', JSON.stringify(orders));
   }, [orders]);
 
+  useEffect(() => {
+    localStorage.setItem('namah_user_role', currentUserRole);
+    localStorage.setItem('namah_user_name', currentUserName);
+  }, [currentUserRole, currentUserName]);
+
+  // Check if current user is authorized to edit operational statuses (Amardeep, Gautam, or Senior/Admin)
+  const isAuthorizedToEdit = currentUserRole === 'Admin' || currentUserRole === 'Order Processing';
+
   const handleImageCapture = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -220,7 +238,7 @@ export default function App() {
         contactNumber: '',
         orderType: '',
         orderSheetNo: '',
-        salesPerson: '',
+        salesPerson: currentUserName,
         jewelleryItem: '',
         tagNumber: '',
         productImageLink: '',
@@ -235,7 +253,7 @@ export default function App() {
         orderDescription: '',
         orderTakenDate: new Date().toISOString().split('T')[0],
         deliveryDate: '',
-        orderPerson: '',
+        orderPerson: 'Amardeep',
         specialRemarks: ''
       });
     } catch (err) {
@@ -248,6 +266,11 @@ export default function App() {
   };
 
   const toggleOrderSwitch = async (index) => {
+    if (!isAuthorizedToEdit) {
+      alert("🔒 Access Restricted: Only Order Processing Executives (Amardeep / Gautam) or Admins can toggle order status.");
+      return;
+    }
+
     const targetOrder = filteredOrders[index];
     const newIsOn = !targetOrder.isOn;
 
@@ -274,6 +297,11 @@ export default function App() {
   };
 
   const handleStatusChange = async (orderSheetNo, tagNumber, newStatus) => {
+    if (!isAuthorizedToEdit) {
+      alert("🔒 Access Restricted: Only Order Processing Executives or Admins can change product statuses.");
+      return;
+    }
+
     setOrders(prev => prev.map(o => 
       (o.orderSheetNo === orderSheetNo && o.tagNumber === tagNumber) 
         ? { ...o, productStatus: newStatus } 
@@ -298,6 +326,11 @@ export default function App() {
 
   const handleKarigarSubmit = async (e) => {
     e.preventDefault();
+    if (!isAuthorizedToEdit) {
+      alert("🔒 Access Restricted: Only Order Processing Executives or Admins can assign orders to karigars.");
+      return;
+    }
+
     const data = new FormData(e.target);
     const updatedOrder = {
       ...selectedOrderForKarigar,
@@ -429,59 +462,80 @@ export default function App() {
   }, [orders, searchQuery, filterSalesperson, filterExecutive, filterWorkType, filterStatus]);
 
   return (
-    <div className="min-h-screen bg-[#111318] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#111318] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 pb-16 md:pb-0">
       {/* TOP NAVBAR */}
-      <header className="bg-[#181b22]/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-2xl">
-        <div className="flex items-center gap-3.5">
-          <div className="bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-300 p-2.5 rounded-2xl shadow-lg shadow-amber-500/20">
-            <Sparkles className="w-5 h-5 text-slate-950 font-bold" />
+      <header className="bg-[#181b22]/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between sticky top-0 z-30 shadow-2xl gap-3">
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-300 p-2.5 rounded-2xl shadow-lg shadow-amber-500/20">
+              <Sparkles className="w-5 h-5 text-slate-950 font-bold" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500">
+                NAMAH JEWELLERS CRM
+              </h1>
+              <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Role: <strong className="text-amber-400">{currentUserRole} ({currentUserName})</strong>
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500">
-              NAMAH JEWELLERS CRM
-            </h1>
-            <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Client Relations & Operations Desk
-            </p>
+
+          {/* Quick Role Switcher for Testing / Security */}
+          <div className="flex items-center gap-1 bg-[#111317] border border-slate-700/80 rounded-xl px-2 py-1 sm:hidden">
+            <select
+              value={currentUserRole}
+              onChange={(e) => {
+                const role = e.target.value;
+                setCurrentUserRole(role);
+                if (role === 'Order Processing') setCurrentUserName('Amardeep');
+                else if (role === 'Admin') setCurrentUserName('Senior Admin');
+                else setCurrentUserName('Sohil');
+              }}
+              className="bg-transparent text-amber-400 text-[11px] font-bold focus:outline-none"
+            >
+              <option value="Salesperson" className="bg-[#181b22]">Sales Staff</option>
+              <option value="Order Processing" className="bg-[#181b22]">Order Desk (Amardeep/Gautam)</option>
+              <option value="Admin" className="bg-[#181b22]">Senior / Admin</option>
+            </select>
           </div>
         </div>
 
-        {/* NAVIGATION TABS */}
-        <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner">
+        {/* NAVIGATION TABS (Mobile Friendly Scrollable) */}
+        <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner overflow-x-auto w-full sm:w-auto justify-start sm:justify-center">
           <button
             onClick={() => setActiveTab('orders')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'orders'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" /> Orders Desk
+            <Layers className="w-3.5 h-3.5" /> Orders
           </button>
           <button
             onClick={() => setActiveTab('crm')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'crm'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Users className="w-3.5 h-3.5" /> Client Directory (CRM)
+            <Users className="w-3.5 h-3.5" /> CRM
           </button>
           <button
             onClick={() => setActiveTab('karigar')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'karigar'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Send className="w-3.5 h-3.5" /> Karigar Work Orders
+            <Send className="w-3.5 h-3.5" /> Karigar
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'attendance'
                 ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
                 : 'text-slate-400 hover:text-slate-200'
@@ -490,56 +544,76 @@ export default function App() {
             <UserCheck className="w-3.5 h-3.5" /> Attendance
           </button>
         </nav>
+
+        {/* Desktop Role Selector */}
+        <div className="hidden sm:flex items-center gap-2 bg-[#111317] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs">
+          <span className="text-slate-400">Role:</span>
+          <select
+            value={currentUserRole}
+            onChange={(e) => {
+              const role = e.target.value;
+              setCurrentUserRole(role);
+              if (role === 'Order Processing') setCurrentUserName('Amardeep');
+              else if (role === 'Admin') setCurrentUserName('Senior Admin');
+              else setCurrentUserName('Sohil');
+            }}
+            className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
+          >
+            <option value="Salesperson" className="bg-[#181b22]">Sales Staff (View & Intake)</option>
+            <option value="Order Processing" className="bg-[#181b22]">Order Desk (Amardeep/Gautam)</option>
+            <option value="Admin" className="bg-[#181b22]">Senior / Admin</option>
+          </select>
+        </div>
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 p-6 max-w-[1450px] w-full mx-auto space-y-6">
+      <main className="flex-1 p-4 sm:p-6 max-w-[1450px] w-full mx-auto space-y-6">
         {activeTab === 'orders' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active Orders</p>
-                  <h3 className="text-2xl font-black text-white mt-1">{filteredOrders.length}</h3>
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">{filteredOrders.length}</h3>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Package className="w-5 h-5" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
-                  <h3 className="text-2xl font-black text-amber-400 mt-1">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
                     {filteredOrders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed').length}
                   </h3>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Clock className="w-5 h-5" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Bill Pending</p>
-                  <h3 className="text-2xl font-black text-emerald-400 mt-1">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Pending</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
                     {filteredOrders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending')).length}
                   </h3>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                  <AlertTriangle className="w-5 h-5" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed & Ready</p>
-                  <h3 className="text-2xl font-black text-purple-400 mt-1">
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
                     {filteredOrders.filter(o => o.isOn && o.productStatus === 'Packed').length}
                   </h3>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                  <CheckCircle2 className="w-5 h-5" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
             </div>
@@ -561,7 +635,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end text-xs">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end text-xs">
                 <div className="relative flex-1 sm:w-44">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-500" />
                   <input
@@ -581,7 +655,7 @@ export default function App() {
                     onChange={(e) => setFilterSalesperson(e.target.value)}
                     className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
                   >
-                    <option value="ALL" className="bg-[#181b22]">All Salespersons</option>
+                    <option value="ALL" className="bg-[#181b22]">All Sales</option>
                     {['Sohil', 'Mohit', 'Hema', 'Akansha', 'Yogita', 'Ziya', 'Deepika'].map(s => (
                       <option key={s} value={s} className="bg-[#181b22]">{s}</option>
                     ))}
@@ -595,23 +669,9 @@ export default function App() {
                     onChange={(e) => setFilterExecutive(e.target.value)}
                     className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
                   >
-                    <option value="ALL" className="bg-[#181b22]">All Executives</option>
+                    <option value="ALL" className="bg-[#181b22]">All Execs</option>
                     <option value="Amardeep" className="bg-[#181b22]">Amardeep</option>
                     <option value="Gautam" className="bg-[#181b22]">Gautam</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1.5 bg-[#111318] border border-slate-700/80 rounded-xl px-3 py-1.5">
-                  <span className="text-slate-400 text-[11px]">Type:</span>
-                  <select
-                    value={filterWorkType}
-                    onChange={(e) => setFilterWorkType(e.target.value)}
-                    className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
-                  >
-                    <option value="ALL" className="bg-[#181b22]">ALL TYPES</option>
-                    <option value="NEW" className="bg-[#181b22]">NEW</option>
-                    <option value="CUSTOMIZATION" className="bg-[#181b22]">CUSTOMIZATION</option>
-                    <option value="REPAIR" className="bg-[#181b22]">REPAIR</option>
                   </select>
                 </div>
 
@@ -622,9 +682,9 @@ export default function App() {
                     onChange={(e) => setFilterStatus(e.target.value)}
                     className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
                   >
-                    <option value="ALL" className="bg-[#181b22]">ALL STATUS</option>
+                    <option value="ALL" className="bg-[#181b22]">All Status</option>
                     <option value="Under Process" className="bg-[#181b22]">Under Process</option>
-                    <option value="Ready but bill pending" className="bg-[#181b22]">Ready but bill pending</option>
+                    <option value="Ready but bill pending" className="bg-[#181b22]">Bill Pending</option>
                     <option value="Packed" className="bg-[#181b22]">Packed</option>
                   </select>
                 </div>
@@ -633,7 +693,7 @@ export default function App() {
 
             {/* ORDERS TABLE */}
             <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl overflow-x-auto shadow-2xl">
-              <table className="w-full text-left text-xs text-slate-300 border-collapse">
+              <table className="w-full text-left text-xs text-slate-300 border-collapse min-w-[950px]">
                 <thead className="bg-[#121419] text-amber-500/90 uppercase font-black tracking-wider border-b border-slate-800 text-[11px]">
                   <tr>
                     <th className="p-4 w-20">IMAGE</th>
@@ -701,7 +761,7 @@ export default function App() {
                               onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
                               className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
                             >
-                              CRM Profile
+                              CRM
                             </button>
                           </h4>
                           <p className="text-[11px] text-slate-400">
@@ -736,14 +796,30 @@ export default function App() {
                         <td className="p-4">
                           {!order.isOn ? (
                             <button
-                              onClick={() => setSelectedOrderForKarigar(order)}
-                              className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1"
+                              onClick={() => {
+                                if (!isAuthorizedToEdit) {
+                                  alert("🔒 Restricted: Only Order Desk Executives can place orders.");
+                                  return;
+                                }
+                                setSelectedOrderForKarigar(order);
+                              }}
+                              className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 ${
+                                isAuthorizedToEdit
+                                  ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
+                                  : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
+                              }`}
                             >
                               Place order
                             </button>
                           ) : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending' ? (
                             <button
-                              onClick={() => setSelectedOrderForKarigar(order)}
+                              onClick={() => {
+                                if (!isAuthorizedToEdit) {
+                                  alert("🔒 Restricted: Only Order Desk Executives can manage karigar returns.");
+                                  return;
+                                }
+                                setSelectedOrderForKarigar(order);
+                              }}
                               className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5"
                             >
                               <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -751,7 +827,13 @@ export default function App() {
                             </button>
                           ) : order.productStatus === 'Packed' ? (
                             <button
-                              onClick={() => setSelectedOrderForKarigar(order)}
+                              onClick={() => {
+                                if (!isAuthorizedToEdit) {
+                                  alert("🔒 Restricted: Only Order Desk Executives can manage deliveries.");
+                                  return;
+                                }
+                                setSelectedOrderForKarigar(order);
+                              }}
                               className="text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all flex items-center gap-1.5"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
@@ -759,7 +841,13 @@ export default function App() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => setSelectedOrderForKarigar(order)}
+                              onClick={() => {
+                                if (!isAuthorizedToEdit) {
+                                  alert("🔒 Restricted: Only Order Desk Executives can assign orders to karigars.");
+                                  return;
+                                }
+                                setSelectedOrderForKarigar(order);
+                              }}
                               className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5"
                             >
                               <Check className="w-3.5 h-3.5 text-amber-400" />
@@ -770,10 +858,10 @@ export default function App() {
 
                         <td className="p-4 text-center">
                           <button
-                            disabled={!order.isOn}
-                            onClick={() => order.isOn && toggleOrderSwitch(idx)}
+                            disabled={!order.isOn || !isAuthorizedToEdit}
+                            onClick={() => order.isOn && isAuthorizedToEdit && toggleOrderSwitch(idx)}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
-                              !order.isOn
+                              !order.isOn || !isAuthorizedToEdit
                                 ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
                                 : 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
                             }`}
@@ -784,7 +872,7 @@ export default function App() {
                         </td>
 
                         <td className="p-4">
-                          {order.isOn ? (
+                          {order.isOn && isAuthorizedToEdit ? (
                             <select
                               value={order.productStatus || 'Under Process'}
                               onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
@@ -801,7 +889,15 @@ export default function App() {
                               <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
                             </select>
                           ) : (
-                            <span className="text-slate-500 text-xs italic">-- Not Placed --</span>
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border ${
+                              order.productStatus === 'Packed'
+                                ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
+                                : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending'
+                                ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
+                                : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
+                            }`}>
+                              {order.productStatus || 'Under Process'}
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -813,7 +909,7 @@ export default function App() {
           </div>
         )}
 
-        {/* CLIENT DIRECTORY (CRM) TAB */}
+        {/* CRM CLIENT DIRECTORY TAB */}
         {activeTab === 'crm' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
@@ -859,11 +955,12 @@ export default function App() {
 
         {/* NEW ORDER INTAKE TAB */}
         {activeTab === 'new-order' && (
-          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 max-w-4xl mx-auto shadow-2xl">
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 sm:p-6 max-w-4xl mx-auto shadow-2xl">
             <div className="border-b border-slate-800 pb-4 mb-6">
               <h2 className="text-xl font-black text-amber-400 flex items-center gap-2">
                 <PlusCircle className="w-6 h-6" /> Sales Order Intake
               </h2>
+              <p className="text-xs text-slate-400 mt-1">Sales team can enter new customer orders directly from mobile or desktop.</p>
             </div>
 
             <form onSubmit={handleCreateOrder} className="space-y-6">
