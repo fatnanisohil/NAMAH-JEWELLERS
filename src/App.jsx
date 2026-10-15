@@ -1352,9 +1352,9 @@ export default function App() {
                   value={loginNameInput}
                   onChange={(e) => setLoginNameInput(e.target.value)}
                 >
-                  <option value="Admin">Admin (PIN: 1234)</option>
-                  <option value="Amardeep">Amardeep (PIN: 5678)</option>
-                  <option value="Gautam">Gautam (PIN: 4321)</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Amardeep">Amardeep</option>
+                  <option value="Gautam">Gautam</option>
                 </select>
               </div>
 
