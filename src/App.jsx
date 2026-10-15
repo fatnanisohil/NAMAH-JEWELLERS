@@ -883,7 +883,7 @@ export default function App() {
                               <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
                             </select>
                           ) : (
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border ${
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
                               (order.productStatus || '').toLowerCase() === 'packed'
                                 ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
                                 : (order.productStatus || '').toLowerCase().includes('bill pending')
