@@ -18,8 +18,7 @@ import {
   Sparkles,
   Layers,
   Copy,
-  Users,
-  ShieldAlert
+  Users
 } from 'lucide-react';
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
@@ -178,7 +177,6 @@ export default function App() {
     localStorage.setItem('namah_user_name', currentUserName);
   }, [currentUserRole, currentUserName]);
 
-  // Check if current user is authorized to edit operational statuses (Amardeep, Gautam, or Senior/Admin)
   const isAuthorizedToEdit = currentUserRole === 'Admin' || currentUserRole === 'Order Processing';
 
   const handleImageCapture = (e) => {
@@ -415,7 +413,6 @@ export default function App() {
     return msg;
   };
 
-  // Group unique customers for CRM view
   const uniqueCustomers = useMemo(() => {
     const map = {};
     orders.forEach(o => {
@@ -481,7 +478,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Role Switcher for Testing / Security */}
           <div className="flex items-center gap-1 bg-[#111317] border border-slate-700/80 rounded-xl px-2 py-1 sm:hidden">
             <select
               value={currentUserRole}
@@ -495,13 +491,12 @@ export default function App() {
               className="bg-transparent text-amber-400 text-[11px] font-bold focus:outline-none"
             >
               <option value="Salesperson" className="bg-[#181b22]">Sales Staff</option>
-              <option value="Order Processing" className="bg-[#181b22]">Order Desk (Amardeep/Gautam)</option>
-              <option value="Admin" className="bg-[#181b22]">Senior / Admin</option>
+              <option value="Order Processing" className="bg-[#181b22]">Order Desk</option>
+              <option value="Admin" className="bg-[#181b22]">Admin</option>
             </select>
           </div>
         </div>
 
-        {/* NAVIGATION TABS (Mobile Friendly Scrollable) */}
         <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner overflow-x-auto w-full sm:w-auto justify-start sm:justify-center">
           <button
             onClick={() => setActiveTab('orders')}
@@ -545,7 +540,6 @@ export default function App() {
           </button>
         </nav>
 
-        {/* Desktop Role Selector */}
         <div className="hidden sm:flex items-center gap-2 bg-[#111317] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs">
           <span className="text-slate-400">Role:</span>
           <select
@@ -890,9 +884,9 @@ export default function App() {
                             </select>
                           ) : (
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border ${
-                              order.productStatus === 'Packed'
+                              (order.productStatus || '').toLowerCase() === 'packed'
                                 ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
-                                : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending'
+                                : (order.productStatus || '').toLowerCase().includes('bill pending')
                                 ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
                                 : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
                             }`}>
@@ -1353,7 +1347,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* EDITABLE SPECS FOR POLICY OVERRIDE */}
               <div className="p-3 bg-[#111318] border border-slate-800/80 rounded-xl space-y-3">
                 <h4 className="text-[11px] font-bold text-amber-400 uppercase">Review / Override Specifications for Karigar</h4>
                 
