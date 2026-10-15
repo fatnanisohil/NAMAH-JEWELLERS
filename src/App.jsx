@@ -200,20 +200,20 @@ export default function App() {
     let userName = loginNameInput;
 
     if (userName === 'Admin') {
-      if (loginPinInput !== '9927') {
+      if (loginPinInput !== '1234') {
         alert("❌ Incorrect Admin PIN!");
         return;
       }
       assignedRole = 'Admin';
       userName = 'Senior Admin';
     } else if (userName === 'Amardeep') {
-      if (loginPinInput !== 'AMARDEEP') {
+      if (loginPinInput !== '5678') {
         alert("❌ Incorrect PIN for Amardeep!");
         return;
       }
       assignedRole = 'Order Processing';
     } else if (userName === 'Gautam') {
-      if (loginPinInput !== 'GAUTAM') {
+      if (loginPinInput !== '4321') {
         alert("❌ Incorrect PIN for Gautam!");
         return;
       }
@@ -509,7 +509,25 @@ export default function App() {
       if (filterSalesperson !== 'ALL' && order.salesPerson !== filterSalesperson) return false;
       if (filterExecutive !== 'ALL' && order.orderPerson !== filterExecutive) return false;
       if (filterWorkType !== 'ALL' && (order.orderType || '').toUpperCase() !== filterWorkType) return false;
-      if (filterStatus !== 'ALL' && (order.productStatus || 'Under Process') !== filterStatus) return false;
+      
+      if (filterStatus !== 'ALL') {
+        const pStatus = (order.productStatus || 'Under Process').toLowerCase();
+        if (filterStatus === 'Under Process') {
+          if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'ready but bill pending' && pStatus !== 'packed')) {
+            return false;
+          }
+        } else if (filterStatus === 'Ready but bill pending') {
+          if (!(order.isOn && (pStatus === 'ready but bill pending' || pStatus.includes('bill pending')))) {
+            return false;
+          }
+        } else if (filterStatus === 'Packed') {
+          if (!(order.isOn && pStatus === 'packed')) {
+            return false;
+          }
+        } else if (order.productStatus !== filterStatus) {
+          return false;
+        }
+      }
 
       return true;
     });
@@ -629,21 +647,29 @@ export default function App() {
         {activeTab === 'orders' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
+              <div 
+                onClick={() => setFilterStatus('ALL')}
+                className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl cursor-pointer hover:border-amber-500/50 transition-all"
+              >
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active</p>
-                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">{filteredOrders.length}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black text-white mt-1">
+                    {orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered').length}
+                  </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
                   <Package className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
+              <div 
+                onClick={() => setFilterStatus('Under Process')}
+                className={`bg-[#181b22] border rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl cursor-pointer transition-all ${filterStatus === 'Under Process' ? 'border-amber-500 bg-amber-500/5' : 'border-slate-800/90 hover:border-amber-500/50'}`}
+              >
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
                   <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                    {filteredOrders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed').length}
+                    {orders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -651,11 +677,14 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
+              <div 
+                onClick={() => setFilterStatus('Ready but bill pending')}
+                className={`bg-[#181b22] border rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl cursor-pointer transition-all ${filterStatus === 'Ready but bill pending' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800/90 hover:border-emerald-500/50'}`}
+              >
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Pending</p>
                   <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                    {filteredOrders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending')).length}
+                    {orders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -663,11 +692,14 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl">
+              <div 
+                onClick={() => setFilterStatus('Packed')}
+                className={`bg-[#181b22] border rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl cursor-pointer transition-all ${filterStatus === 'Packed' ? 'border-purple-500 bg-purple-500/5' : 'border-slate-800/90 hover:border-purple-500/50'}`}
+              >
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed</p>
                   <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
-                    {filteredOrders.filter(o => o.isOn && o.productStatus === 'Packed').length}
+                    {orders.filter(o => o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -1352,9 +1384,9 @@ export default function App() {
                   value={loginNameInput}
                   onChange={(e) => setLoginNameInput(e.target.value)}
                 >
-                  <option value="Admin">Admin</option>
-                  <option value="Amardeep">Amardeep</option>
-                  <option value="Gautam">Gautam</option>
+                  <option value="Admin">Admin (PIN: 1234)</option>
+                  <option value="Amardeep">Amardeep (PIN: 5678)</option>
+                  <option value="Gautam">Gautam (PIN: 4321)</option>
                 </select>
               </div>
 
