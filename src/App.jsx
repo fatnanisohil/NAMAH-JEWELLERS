@@ -22,7 +22,8 @@ import {
   Lock,
   LogOut,
   ShieldCheck,
-  LogIn
+  LogIn,
+  PowerOff
 } from 'lucide-react';
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
@@ -320,14 +321,14 @@ export default function App() {
     }
   };
 
-  const toggleOrderSwitch = async (index) => {
+  const toggleOrderSwitch = async (targetOrder) => {
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk (Amardeep / Gautam) to modify orders.");
       return;
     }
 
-    const targetOrder = filteredOrders[index];
-    if (!targetOrder.karigarName) {
+    const isAssigned = targetOrder.karigarName || (targetOrder.productStatus && !targetOrder.productStatus.includes('Not Assign'));
+    if (!isAssigned) {
       alert("🔒 Cannot turn ON: Order is not yet assigned to a Karigar.");
       return;
     }
@@ -516,7 +517,7 @@ export default function App() {
       if (filterWorkType !== 'ALL' && (order.orderType || '').toUpperCase() !== filterWorkType) return false;
       
       if (filterStatus !== 'ALL') {
-        const pStatus = (order.karigarName ? (order.productStatus || 'Under Process') : '--Not Assign--').toLowerCase();
+        const pStatus = (order.productStatus || '--Not Assign--').toLowerCase();
         if (filterStatus === 'Under Process') {
           if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'packed' && !pStatus.includes('not assign'))) {
             return false;
@@ -537,6 +538,15 @@ export default function App() {
       return true;
     });
   }, [orders, searchQuery, filterSalesperson, filterExecutive, filterWorkType, filterStatus]);
+
+  const offOrders = useMemo(() => {
+    return orders.filter(order => {
+      if ((order.orderStatus || '').toLowerCase() === 'delivered' || (order.productStatus || '').toLowerCase() === 'delivered') {
+        return false;
+      }
+      return !order.isOn;
+    });
+  }, [orders]);
 
   return (
     <div className="min-h-screen bg-[#111318] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 pb-16 md:pb-0">
@@ -588,6 +598,16 @@ export default function App() {
             }`}
           >
             <Layers className="w-3.5 h-3.5" /> Orders
+          </button>
+          <button
+            onClick={() => setActiveTab('off-orders')}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'off-orders'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <PowerOff className="w-3.5 h-3.5" /> OFF Orders ({offOrders.length})
           </button>
           <button
             onClick={() => setActiveTab('crm')}
@@ -674,7 +694,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
                   <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                    {orders.filter(o => o.karigarName && o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.isOn && (o.productStatus === 'Under Process' || (!o.productStatus || o.productStatus.toLowerCase() === 'under process')) && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -689,7 +709,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Pending</p>
                   <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                    {orders.filter(o => o.karigarName && o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -704,7 +724,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed</p>
                   <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
-                    {orders.filter(o => o.karigarName && o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -815,195 +835,290 @@ export default function App() {
                       </td>
                     </tr>
                   ) : (
-                    filteredOrders.map((order, idx) => (
-                      <tr key={idx} className="hover:bg-[#20242e]/60 transition-all group">
-                        <td className="p-4">
-                          {formatDriveUrl(order) ? (
-                            <img
-                              src={formatDriveUrl(order)}
-                              alt=""
-                              className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md group-hover:scale-105 transition-transform"
-                            />
-                          ) : (
-                            <div className="w-14 h-14 bg-[#212530] rounded-xl flex flex-col items-center justify-center border border-slate-700/60 text-slate-500 text-[10px] font-semibold">
-                              <span>Product</span>
+                    filteredOrders.map((order, idx) => {
+                      const isAssigned = order.karigarName || (order.productStatus && !order.productStatus.includes('Not Assign'));
+                      return (
+                        <tr key={idx} className="hover:bg-[#20242e]/60 transition-all group">
+                          <td className="p-4">
+                            {formatDriveUrl(order) ? (
+                              <img
+                                src={formatDriveUrl(order)}
+                                alt=""
+                                className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 bg-[#212530] rounded-xl flex flex-col items-center justify-center border border-slate-700/60 text-slate-500 text-[10px] font-semibold">
+                                <span>Product</span>
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="p-4 space-y-1">
+                            <h4 className="text-sm font-black text-amber-400 tracking-wide">
+                              {order.orderSheetNo || `NJ-2026-00${idx + 1}`}
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              {order.tagNumber || 'TAG-8821'}
+                            </p>
+                            <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                              (order.orderType || '').toUpperCase() === 'CUSTOMIZATION'
+                                ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
+                                : (order.orderType || '').toUpperCase() === 'REPAIR'
+                                ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                            }`}>
+                              {order.orderType || 'NEW'}
+                            </span>
+                          </td>
+
+                          <td className="p-4 space-y-0.5">
+                            <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                              {order.customerName || 'Sanjay Agarwal'}
+                              <button 
+                                onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
+                                className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
+                              >
+                                CRM
+                              </button>
+                            </h4>
+                            <p className="text-[11px] text-slate-400">
+                              {order.contactNumber || '+91 98765 12345'}
+                            </p>
+                            <p className="text-[11px] font-bold text-amber-400/90 pt-0.5">
+                              Sales: {order.salesPerson || 'Sohil'}
+                            </p>
+                          </td>
+
+                          <td className="p-4 space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem || 'Necklace'}</span>
+                              {order.purity && <span className="text-[11px] font-black text-amber-300">({order.purity})</span>}
                             </div>
-                          )}
-                        </td>
+                            <div className="text-[11px] text-slate-300 space-x-1">
+                              {order.goldWeight && <span>Gold: <strong className="text-amber-400 font-bold">{order.goldWeight}g</strong></span>}
+                              {order.goldWeight && order.diamondWeight && <span className="text-slate-600">|</span>}
+                              {order.diamondWeight && <span>Dia: <strong className="text-amber-400 font-bold">{order.diamondWeight}ct</strong></span>}
+                            </div>
+                            <p className="text-[11px] text-slate-400">
+                              {order.colorTone || ''} {order.size ? `| Size: ${order.size}` : ''}
+                            </p>
+                          </td>
 
-                        <td className="p-4 space-y-1">
-                          <h4 className="text-sm font-black text-amber-400 tracking-wide">
-                            {order.orderSheetNo || `NJ-2026-00${idx + 1}`}
-                          </h4>
-                          <p className="text-[10px] text-slate-400 font-mono">
-                            {order.tagNumber || 'TAG-8821'}
-                          </p>
-                          <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
-                            (order.orderType || '').toUpperCase() === 'CUSTOMIZATION'
-                              ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
-                              : (order.orderType || '').toUpperCase() === 'REPAIR'
-                              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                          }`}>
-                            {order.orderType || 'NEW'}
-                          </span>
-                        </td>
+                          <td className="p-4">
+                            <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
+                              {order.orderPerson || 'Amardeep'}
+                            </span>
+                          </td>
 
-                        <td className="p-4 space-y-0.5">
-                          <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
-                            {order.customerName || 'Sanjay Agarwal'}
-                            <button 
-                              onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
-                              className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
-                            >
-                              CRM
-                            </button>
-                          </h4>
-                          <p className="text-[11px] text-slate-400">
-                            {order.contactNumber || '+91 98765 12345'}
-                          </p>
-                          <p className="text-[11px] font-bold text-amber-400/90 pt-0.5">
-                            Sales: {order.salesPerson || 'Sohil'}
-                          </p>
-                        </td>
+                          <td className="p-4">
+                            {!isAssigned ? (
+                              <button
+                                onClick={() => {
+                                  if (!isAuthorizedToEdit) {
+                                    alert("🔒 Restricted: Please login as Admin or Order Desk to place orders.");
+                                    return;
+                                  }
+                                  setSelectedOrderForKarigar(order);
+                                }}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 ${
+                                  isAuthorizedToEdit
+                                    ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
+                                    : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
+                                }`}
+                              >
+                                Place order
+                              </button>
+                            ) : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending' ? (
+                              <button
+                                onClick={() => {
+                                  if (!isAuthorizedToEdit) {
+                                    alert("🔒 Restricted: Please login as Admin or Order Desk to manage karigar returns.");
+                                    return;
+                                  }
+                                  setSelectedOrderForKarigar(order);
+                                }}
+                                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5"
+                              >
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Received from Karigar</span>
+                              </button>
+                            ) : order.productStatus === 'Packed' ? (
+                              <button
+                                onClick={() => {
+                                  if (!isAuthorizedToEdit) {
+                                    alert("🔒 Restricted: Please login as Admin or Order Desk to manage deliveries.");
+                                    return;
+                                  }
+                                  setSelectedOrderForKarigar(order);
+                                }}
+                                className="text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                                <span>Ready to delivery</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  if (!isAuthorizedToEdit) {
+                                    alert("🔒 Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
+                                    return;
+                                  }
+                                  setSelectedOrderForKarigar(order);
+                                }}
+                                className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5"
+                              >
+                                <Check className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Assign to Karigar</span>
+                              </button>
+                            )}
+                          </td>
 
-                        <td className="p-4 space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem || 'Necklace'}</span>
-                            {order.purity && <span className="text-[11px] font-black text-amber-300">({order.purity})</span>}
-                          </div>
-                          <div className="text-[11px] text-slate-300 space-x-1">
-                            {order.goldWeight && <span>Gold: <strong className="text-amber-400 font-bold">{order.goldWeight}g</strong></span>}
-                            {order.goldWeight && order.diamondWeight && <span className="text-slate-600">|</span>}
-                            {order.diamondWeight && <span>Dia: <strong className="text-amber-400 font-bold">{order.diamondWeight}ct</strong></span>}
-                          </div>
-                          <p className="text-[11px] text-slate-400">
-                            {order.colorTone || ''} {order.size ? `| Size: ${order.size}` : ''}
-                          </p>
-                        </td>
-
-                        <td className="p-4">
-                          <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
-                            {order.orderPerson || 'Amardeep'}
-                          </span>
-                        </td>
-
-                        <td className="p-4">
-                          {!order.karigarName ? (
+                          <td className="p-4 text-center">
                             <button
-                              onClick={() => {
-                                if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Please login as Admin or Order Desk to place orders.");
-                                  return;
-                                }
-                                setSelectedOrderForKarigar(order);
-                              }}
-                              className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 ${
-                                isAuthorizedToEdit
-                                  ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
-                                  : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
+                              disabled={!isAssigned || !isAuthorizedToEdit}
+                              onClick={() => isAssigned && isAuthorizedToEdit && toggleOrderSwitch(order)}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                                !isAssigned || !isAuthorizedToEdit
+                                  ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                                  : order.isOn
+                                  ? 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
+                                  : 'bg-slate-900 border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                               }`}
                             >
-                              Place order
+                              {isAssigned && order.isOn ? (
+                                <>
+                                  <ToggleRight className="w-4 h-4 text-emerald-400" />
+                                  <span>ON</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ToggleLeft className="w-4 h-4 text-slate-500" />
+                                  <span>OFF</span>
+                                </>
+                              )}
                             </button>
-                          ) : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending' ? (
-                            <button
-                              onClick={() => {
-                                if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Please login as Admin or Order Desk to manage karigar returns.");
-                                  return;
-                                }
-                                setSelectedOrderForKarigar(order);
-                              }}
-                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>Received from Karigar</span>
-                            </button>
-                          ) : order.productStatus === 'Packed' ? (
-                            <button
-                              onClick={() => {
-                                if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Please login as Admin or Order Desk to manage deliveries.");
-                                  return;
-                                }
-                                setSelectedOrderForKarigar(order);
-                              }}
-                              className="text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
-                              <span>Ready to delivery</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
-                                  return;
-                                }
-                                setSelectedOrderForKarigar(order);
-                              }}
-                              className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Assign to Karigar</span>
-                            </button>
-                          )}
-                        </td>
+                          </td>
 
-                        <td className="p-4 text-center">
-                          <button
-                            disabled={!order.karigarName || !isAuthorizedToEdit}
-                            onClick={() => order.karigarName && isAuthorizedToEdit && toggleOrderSwitch(idx)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
-                              !order.karigarName || !isAuthorizedToEdit
-                                ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
-                                : order.isOn
-                                ? 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
-                                : 'bg-slate-900 border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
-                            }`}
-                          >
-                            {order.karigarName && order.isOn ? (
-                              <>
-                                <ToggleRight className="w-4 h-4 text-emerald-400" />
-                                <span>ON</span>
-                              </>
+                          <td className="p-4">
+                            {isAssigned && order.isOn && isAuthorizedToEdit ? (
+                              <select
+                                value={order.productStatus || 'Under Process'}
+                                onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none bg-amber-900/30 text-amber-300 border-amber-600/40"
+                              >
+                                <option value="Under Process" className="bg-[#181b22] text-amber-300">Under Process</option>
+                                <option value="Ready but bill pending" className="bg-[#181b22] text-emerald-300">Ready but bill pending</option>
+                                <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
+                              </select>
                             ) : (
-                              <>
-                                <ToggleLeft className="w-4 h-4 text-slate-500" />
-                                <span>OFF</span>
-                              </>
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
+                                !isAssigned
+                                  ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
+                                  : (order.productStatus || '').toLowerCase() === 'packed'
+                                  ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
+                                  : (order.productStatus || '').toLowerCase().includes('bill pending')
+                                  ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
+                                  : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
+                              }`}>
+                                {isAssigned ? (order.productStatus || 'Under Process') : '--Not Assign--'}
+                              </span>
                             )}
-                          </button>
-                        </td>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
-                        <td className="p-4">
-                          {order.karigarName && order.isOn && isAuthorizedToEdit ? (
-                            <select
-                              value={order.productStatus || 'Under Process'}
-                              onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
-                              className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none bg-amber-900/30 text-amber-300 border-amber-600/40"
-                            >
-                              <option value="Under Process" className="bg-[#181b22] text-amber-300">Under Process</option>
-                              <option value="Ready but bill pending" className="bg-[#181b22] text-emerald-300">Ready but bill pending</option>
-                              <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
-                            </select>
-                          ) : (
-                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
-                              !order.karigarName
-                                ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
-                                : (order.productStatus || '').toLowerCase() === 'packed'
-                                ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
-                                : (order.productStatus || '').toLowerCase().includes('bill pending')
-                                ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
-                                : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
-                            }`}>
-                              {order.karigarName ? (order.productStatus || 'Under Process') : '--Not Assign--'}
+        {/* OFF ORDERS TAB */}
+        {activeTab === 'off-orders' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-amber-400 flex items-center gap-2">
+                  <PowerOff className="w-5 h-5" /> OFF Orders List
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Review all orders with the toggle currently turned OFF.</p>
+              </div>
+              <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-bold">
+                Total OFF Orders: {offOrders.length}
+              </span>
+            </div>
+
+            <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl overflow-x-auto shadow-2xl">
+              <table className="w-full text-left text-xs text-slate-300 border-collapse min-w-[950px]">
+                <thead className="bg-[#121419] text-amber-500/90 uppercase font-black tracking-wider border-b border-slate-800 text-[11px]">
+                  <tr>
+                    <th className="p-4 w-20">IMAGE</th>
+                    <th className="p-4">ORDER SHEET / TAG</th>
+                    <th className="p-4">CUSTOMER & SALES</th>
+                    <th className="p-4">JEWELLERY SPECS</th>
+                    <th className="p-4">ORDER EXECUTIVE</th>
+                    <th className="p-4 text-center">ON/OFF TOGGLE</th>
+                    <th className="p-4">PRODUCT STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {offOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="p-12 text-center text-slate-500 text-sm font-medium">
+                        No OFF orders found.
+                      </td>
+                    </tr>
+                  ) : (
+                    offOrders.map((order, idx) => {
+                      const isAssigned = order.karigarName || (order.productStatus && !order.productStatus.includes('Not Assign'));
+                      return (
+                        <tr key={idx} className="hover:bg-[#20242e]/60 transition-all group">
+                          <td className="p-4">
+                            {formatDriveUrl(order) ? (
+                              <img src={formatDriveUrl(order)} alt="" className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md" />
+                            ) : (
+                              <div className="w-14 h-14 bg-[#212530] rounded-xl flex items-center justify-center border border-slate-700/60 text-slate-500 text-[10px]">Product</div>
+                            )}
+                          </td>
+                          <td className="p-4 space-y-1">
+                            <h4 className="text-sm font-black text-amber-400">{order.orderSheetNo}</h4>
+                            <p className="text-[10px] text-slate-400 font-mono">{order.tagNumber}</p>
+                          </td>
+                          <td className="p-4 space-y-0.5">
+                            <h4 className="text-sm font-bold text-slate-100">{order.customerName}</h4>
+                            <p className="text-[11px] text-slate-400">{order.contactNumber}</p>
+                            <p className="text-[11px] font-bold text-amber-400">Sales: {order.salesPerson}</p>
+                          </td>
+                          <td className="p-4 space-y-1">
+                            <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem}</span>
+                            <div className="text-[11px] text-slate-300">
+                              {order.goldWeight && <span>Gold: <strong className="text-amber-400">{order.goldWeight}g</strong></span>}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
+                              {order.orderPerson || 'Amardeep'}
                             </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="p-4 text-center">
+                            <button
+                              disabled={!isAssigned || !isAuthorizedToEdit}
+                              onClick={() => isAssigned && isAuthorizedToEdit && toggleOrderSwitch(order)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-slate-900 border-slate-700 text-slate-500 cursor-pointer"
+                            >
+                              <ToggleLeft className="w-4 h-4 text-slate-500" />
+                              <span>OFF</span>
+                            </button>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-xs font-bold px-2.5 py-1 rounded-xl border bg-slate-900/60 text-slate-400 border-slate-700/60">
+                              {order.productStatus || '--Not Assign--'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
