@@ -1011,7 +1011,7 @@ export default function App() {
                                 <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
                               </select>
                             ) : (
-                              <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
+                              <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap inline-block ${
                                 !isAssigned
                                   ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
                                   : (order.productStatus || '').toLowerCase() === 'packed'
@@ -1112,8 +1112,16 @@ export default function App() {
                             </button>
                           </td>
                           <td className="p-4">
-                            <span className="text-xs font-bold px-2.5 py-1 rounded-xl border bg-slate-900/60 text-slate-400 border-slate-700/60">
-                              {order.productStatus || '--Not Assign--'}
+                            <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap inline-block ${
+                              !isAssigned
+                                ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
+                                : (order.productStatus || '').toLowerCase() === 'packed'
+                                ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
+                                : (order.productStatus || '').toLowerCase().includes('bill pending')
+                                ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
+                                : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
+                            }`}>
+                              {isAssigned ? (order.productStatus || 'Under Process') : '--Not Assign--'}
                             </span>
                           </td>
                         </tr>
