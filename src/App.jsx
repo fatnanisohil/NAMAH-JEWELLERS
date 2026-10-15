@@ -200,16 +200,24 @@ export default function App() {
     let userName = loginNameInput;
 
     if (userName === 'Admin') {
-      if (loginPinInput !== '1234') {
-        alert("❌ Incorrect Admin PIN! (Default pin is 1234)");
+      if (loginPinInput !== '9927') {
+        alert("❌ Incorrect Admin PIN!");
         return;
       }
       assignedRole = 'Admin';
       userName = 'Senior Admin';
-    } else if (userName === 'Amardeep' || userName === 'Gautam') {
+    } else if (userName === 'Amardeep') {
+      if (loginPinInput !== 'AMARDEEP') {
+        alert("❌ Incorrect PIN for Amardeep!");
+        return;
+      }
       assignedRole = 'Order Processing';
-    } else {
-      assignedRole = 'Salesperson';
+    } else if (userName === 'Gautam') {
+      if (loginPinInput !== 'GAUTAM') {
+        alert("❌ Incorrect PIN for Gautam!");
+        return;
+      }
+      assignedRole = 'Order Processing';
     }
 
     setCurrentUserRole(assignedRole);
@@ -1344,25 +1352,23 @@ export default function App() {
                   value={loginNameInput}
                   onChange={(e) => setLoginNameInput(e.target.value)}
                 >
-                  <option value="Admin">Admin (Requires PIN)</option>
-                  <option value="Amardeep">Amardeep (Order Desk)</option>
-                  <option value="Gautam">Gautam (Order Desk)</option>
+                  <option value="Admin">Admin (PIN: 1234)</option>
+                  <option value="Amardeep">Amardeep (PIN: 5678)</option>
+                  <option value="Gautam">Gautam (PIN: 4321)</option>
                 </select>
               </div>
 
-              {loginNameInput === 'Admin' && (
-                <div>
-                  <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Admin Security PIN</label>
-                  <input
-                    type="password"
-                    placeholder="Enter PIN (e.g. 1234)"
-                    className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
-                    value={loginPinInput}
-                    onChange={(e) => setLoginPinInput(e.target.value)}
-                    required
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Security PIN</label>
+                <input
+                  type="password"
+                  placeholder="Enter your PIN..."
+                  className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
+                  value={loginPinInput}
+                  onChange={(e) => setLoginPinInput(e.target.value)}
+                  required
+                />
+              </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
