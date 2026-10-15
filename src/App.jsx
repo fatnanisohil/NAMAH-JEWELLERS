@@ -190,7 +190,6 @@ export default function App() {
     localStorage.setItem('namah_user_name', currentUserName);
   }, [isLoggedIn, currentUserRole, currentUserName]);
 
-  // Authorization check: Only Admin or Order Processing (Amardeep / Gautam) can edit operational states
   const isAuthorizedToEdit = isLoggedIn && (currentUserRole === 'Admin' || currentUserRole === 'Order Processing');
 
   const handleLoginSubmit = (e) => {
@@ -406,7 +405,7 @@ export default function App() {
       alterationDetails: data.get('alterationDetails'),
       placingStatus: true,
       isOn: true,
-      productStatus: selectedOrderForKarigar.productStatus === '--Not Assign--' || !selectedOrderForKarigar.productStatus ? 'Under Process' : selectedOrderForKarigar.productStatus
+      productStatus: (selectedOrderForKarigar.productStatus === '--Not Assign--' || !selectedOrderForKarigar.productStatus) ? 'Under Process' : selectedOrderForKarigar.productStatus
     };
 
     setOrders(prev => prev.map(o => (o.orderSheetNo === updatedOrder.orderSheetNo && o.tagNumber === updatedOrder.tagNumber) ? updatedOrder : o));
@@ -517,7 +516,7 @@ export default function App() {
       if (filterWorkType !== 'ALL' && (order.orderType || '').toUpperCase() !== filterWorkType) return false;
       
       if (filterStatus !== 'ALL') {
-        const pStatus = (order.productStatus || '--Not Assign--').toLowerCase();
+        const pStatus = (order.karigarName ? (order.productStatus || 'Under Process') : '--Not Assign--').toLowerCase();
         if (filterStatus === 'Under Process') {
           if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'packed' && !pStatus.includes('not assign'))) {
             return false;
@@ -530,7 +529,7 @@ export default function App() {
           if (!(order.isOn && pStatus === 'packed')) {
             return false;
           }
-        } else if (order.productStatus !== filterStatus) {
+        } else if (pStatus !== filterStatus.toLowerCase()) {
           return false;
         }
       }
@@ -675,7 +674,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
                   <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                    {orders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && !String(o.productStatus || '').includes('Not Assign') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.karigarName && o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -690,7 +689,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Pending</p>
                   <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                    {orders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.karigarName && o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -705,7 +704,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed</p>
                   <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
-                    {orders.filter(o => o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.karigarName && o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -981,7 +980,7 @@ export default function App() {
                         <td className="p-4">
                           {order.karigarName && order.isOn && isAuthorizedToEdit ? (
                             <select
-                              value={order.productStatus || '--Not Assign--'}
+                              value={order.productStatus || 'Under Process'}
                               onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
                               className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none bg-amber-900/30 text-amber-300 border-amber-600/40"
                             >
@@ -991,7 +990,7 @@ export default function App() {
                             </select>
                           ) : (
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
-                              (order.productStatus || '').includes('Not Assign')
+                              !order.karigarName
                                 ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
                                 : (order.productStatus || '').toLowerCase() === 'packed'
                                 ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
@@ -999,7 +998,7 @@ export default function App() {
                                 ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
                                 : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
                             }`}>
-                              {order.productStatus || '--Not Assign--'}
+                              {order.karigarName ? (order.productStatus || 'Under Process') : '--Not Assign--'}
                             </span>
                           )}
                         </td>
@@ -1459,7 +1458,7 @@ export default function App() {
                       <p className="text-[11px] text-slate-400">Tag: {ord.tagNumber} | Salesperson: {ord.salesPerson}</p>
                     </div>
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold">
-                      {ord.productStatus || 'Under Process'}
+                      {ord.karigarName ? (ord.productStatus || 'Under Process') : '--Not Assign--'}
                     </span>
                   </div>
                 ))}
