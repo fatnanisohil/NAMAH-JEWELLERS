@@ -1,0 +1,1395 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Package,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Send,
+  PlusCircle,
+  UserCheck,
+  Check,
+  X,
+  Camera,
+  Download,
+  ToggleLeft,
+  ToggleRight,
+  Search,
+  Filter,
+  Sparkles,
+  Layers,
+  Copy,
+  Users
+} from 'lucide-react';
+
+const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('orders');
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('namah_local_orders');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [attendance, setAttendance] = useState(() => {
+    const saved = localStorage.getItem('namah_attendance');
+    return saved ? JSON.parse(saved) : [
+      { name: 'Sohil', role: 'Sales', status: 'Present', checkIn: '10:00 AM', checkOut: '07:30 PM', workingHours: '9.5' },
+      { name: 'Mohit', role: 'Sales', status: 'Present', checkIn: '10:15 AM', checkOut: '07:30 PM', workingHours: '9.25' },
+      { name: 'Hema', role: 'Sales', status: 'Late', checkIn: '10:45 AM', checkOut: '07:30 PM', workingHours: '8.75' },
+      { name: 'Akansha', role: 'Sales', status: 'Present', checkIn: '09:55 AM', checkOut: '07:30 PM', workingHours: '9.5' },
+      { name: 'Yogita', role: 'Sales', status: 'On Field', checkIn: '11:00 AM', checkOut: '--', workingHours: '--' },
+      { name: 'Ziya', role: 'Sales', status: 'Present', checkIn: '10:05 AM', checkOut: '07:30 PM', workingHours: '9.4' },
+      { name: 'Deepika', role: 'Sales', status: 'Half Day', checkIn: '10:00 AM', checkOut: '02:30 PM', workingHours: '4.5' },
+      { name: 'Amardeep', role: 'Order Processing', status: 'Present', checkIn: '09:45 AM', checkOut: '08:00 PM', workingHours: '10.25' },
+      { name: 'Gautam', role: 'Order Processing', status: 'Present', checkIn: '09:50 AM', checkOut: '08:00 PM', workingHours: '10.1' }
+    ];
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filters
+  const [filterSalesperson, setFilterSalesperson] = useState('ALL');
+  const [filterExecutive, setFilterExecutive] = useState('ALL');
+  const [filterWorkType, setFilterWorkType] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+
+  // Modals
+  const [selectedOrderForKarigar, setSelectedOrderForKarigar] = useState(null);
+  const [whatsappModalData, setWhatsappModalData] = useState(null);
+  const [selectedCustomerCRM, setSelectedCustomerCRM] = useState(null);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    customerName: '',
+    contactNumber: '',
+    orderType: '',
+    orderSheetNo: '',
+    salesPerson: '',
+    jewelleryItem: '',
+    tagNumber: '',
+    productImageLink: '',
+    imageBase64: '',
+    imagePreviewLocal: '',
+    goldWeight: '',
+    diamondWeight: '',
+    colorTone: '',
+    colorStone: '',
+    size: '',
+    purity: '',
+    orderDescription: '',
+    orderTakenDate: new Date().toISOString().split('T')[0],
+    deliveryDate: '',
+    orderPerson: '',
+    specialRemarks: ''
+  });
+
+  const extractDateOnly = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const val = String(dateStr).trim();
+    if (val.includes('T')) return val.split('T')[0];
+    if (val.includes(' ')) return val.split(' ')[0];
+    return val;
+  };
+
+  const formatDriveUrl = (order) => {
+    if (order.imagePreviewLocal) return order.imagePreviewLocal;
+    if (order.imageBase64) return order.imageBase64;
+    if (order.productImageLink && (order.productImageLink.startsWith('blob:') || order.productImageLink.startsWith('data:image'))) {
+      return order.productImageLink;
+    }
+
+    const rawUrl = order.productImageLink || order.imageUrl || order.image || order.photo || '';
+    if (!rawUrl || typeof rawUrl !== 'string') return '';
+    if (rawUrl.startsWith('data:image') || rawUrl.startsWith('blob:') || (!rawUrl.includes('drive.google.com') && rawUrl.startsWith('http'))) {
+      return rawUrl;
+    }
+    if (rawUrl.includes('Drive Error') || rawUrl.includes('Exception:')) return '';
+
+    let fileId = '';
+    if (rawUrl.includes('/file/d/')) {
+      fileId = rawUrl.split('/file/d/')[1]?.split('/')[0];
+    } else if (rawUrl.includes('id=')) {
+      fileId = rawUrl.split('id=')[1]?.split('&')[0];
+    } else if (rawUrl.includes('/d/')) {
+      fileId = rawUrl.split('/d/')[1]?.split('/')[0];
+    }
+
+    if (fileId) {
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w500`;
+    }
+    return rawUrl;
+  };
+
+  const fetchOrdersFromSheet = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(GOOGLE_SHEETS_API_URL);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setOrders(prevOrders => {
+          const merged = data.map(serverOrder => {
+            const localMatch = prevOrders.find(o => o.orderSheetNo === serverOrder.orderSheetNo && o.tagNumber === serverOrder.tagNumber);
+            return {
+              ...serverOrder,
+              imagePreviewLocal: localMatch?.imagePreviewLocal || serverOrder.imagePreviewLocal,
+              imageBase64: localMatch?.imageBase64 || serverOrder.imageBase64,
+              productImageLink: localMatch?.imagePreviewLocal || localMatch?.imageBase64 || serverOrder.productImageLink,
+              isOn: serverOrder.isOn
+            };
+          });
+          return merged;
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching from Google Sheets:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrdersFromSheet();
+    const interval = setInterval(fetchOrdersFromSheet, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('namah_attendance', JSON.stringify(attendance));
+  }, [attendance]);
+
+  useEffect(() => {
+    localStorage.setItem('namah_local_orders', JSON.stringify(orders));
+  }, [orders]);
+
+  const handleImageCapture = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const localUrl = URL.createObjectURL(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          imageBase64: reader.result,
+          productImageLink: reader.result,
+          imagePreviewLocal: localUrl
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCreateOrder = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const submissionData = {
+        ...formData,
+        productImageLink: formData.imagePreviewLocal || formData.imageBase64 || formData.productImageLink
+      };
+
+      const payload = new URLSearchParams();
+      Object.keys(submissionData).forEach(key => {
+        payload.append(key, submissionData[key] || '');
+      });
+
+      const optimisticNewOrder = {
+        ...submissionData,
+        isOn: false,
+        productStatus: 'Under Process',
+        placingStatus: false
+      };
+
+      setOrders(prev => [optimisticNewOrder, ...prev]);
+
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        body: payload
+      });
+
+      alert("Sales Order saved successfully!");
+      setTimeout(() => {
+        fetchOrdersFromSheet();
+      }, 1500);
+
+      setActiveTab('orders');
+      setFormData({
+        customerName: '',
+        contactNumber: '',
+        orderType: '',
+        orderSheetNo: '',
+        salesPerson: '',
+        jewelleryItem: '',
+        tagNumber: '',
+        productImageLink: '',
+        imageBase64: '',
+        imagePreviewLocal: '',
+        goldWeight: '',
+        diamondWeight: '',
+        colorTone: '',
+        colorStone: '',
+        size: '',
+        purity: '',
+        orderDescription: '',
+        orderTakenDate: new Date().toISOString().split('T')[0],
+        deliveryDate: '',
+        orderPerson: '',
+        specialRemarks: ''
+      });
+    } catch (err) {
+      console.error("Failed to submit order:", err);
+      alert("Order submission sent. Please verify Google Sheet.");
+      fetchOrdersFromSheet();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleOrderSwitch = async (index) => {
+    const targetOrder = filteredOrders[index];
+    const newIsOn = !targetOrder.isOn;
+
+    setOrders(prev => prev.map(o => 
+      (o.orderSheetNo === targetOrder.orderSheetNo && o.tagNumber === targetOrder.tagNumber)
+        ? { ...o, isOn: newIsOn }
+        : o
+    ));
+
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action', 'toggleOrder');
+      payload.append('orderSheetNo', targetOrder.orderSheetNo);
+      payload.append('tagNumber', targetOrder.tagNumber);
+      payload.append('isOn', newIsOn ? 'ON' : 'OFF');
+
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        body: payload
+      });
+    } catch (err) {
+      console.error("Failed to sync toggle status:", err);
+    }
+  };
+
+  const handleStatusChange = async (orderSheetNo, tagNumber, newStatus) => {
+    setOrders(prev => prev.map(o => 
+      (o.orderSheetNo === orderSheetNo && o.tagNumber === tagNumber) 
+        ? { ...o, productStatus: newStatus } 
+        : o
+    ));
+
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action', 'updateStatus');
+      payload.append('orderSheetNo', orderSheetNo);
+      payload.append('tagNumber', tagNumber);
+      payload.append('productStatus', newStatus);
+
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        body: payload
+      });
+    } catch (err) {
+      console.error("Failed to update product status:", err);
+    }
+  };
+
+  const handleKarigarSubmit = async (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const updatedOrder = {
+      ...selectedOrderForKarigar,
+      karigarName: data.get('karigarName'),
+      karigarDod: extractDateOnly(data.get('karigarDod')),
+      goldWeight: data.get('goldWeight'),
+      diamondWeight: data.get('diamondWeight'),
+      colorTone: data.get('colorTone'),
+      purity: data.get('purity'),
+      size: data.get('size'),
+      orderDescription: data.get('orderDescription'),
+      alterationDetails: data.get('alterationDetails'),
+      placingStatus: true,
+      isOn: true,
+      productStatus: selectedOrderForKarigar.productStatus || 'Under Process'
+    };
+
+    setOrders(prev => prev.map(o => (o.orderSheetNo === updatedOrder.orderSheetNo && o.tagNumber === updatedOrder.tagNumber) ? updatedOrder : o));
+    setSelectedOrderForKarigar(null);
+    setWhatsappModalData(updatedOrder);
+
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action', 'updateKarigar');
+      payload.append('orderSheetNo', updatedOrder.orderSheetNo || '');
+      payload.append('customerName', updatedOrder.customerName || '');
+      payload.append('contactNumber', updatedOrder.contactNumber || '');
+      payload.append('jewelleryItem', updatedOrder.jewelleryItem || '');
+      payload.append('tagNumber', updatedOrder.tagNumber || '');
+      payload.append('karigarName', updatedOrder.karigarName || '');
+      payload.append('goldWeight', updatedOrder.goldWeight || '');
+      payload.append('diamondWeight', updatedOrder.diamondWeight || '');
+      payload.append('colorTone', updatedOrder.colorTone || '');
+      payload.append('purity', updatedOrder.purity || '');
+      payload.append('size', updatedOrder.size || '');
+      payload.append('orderDescription', updatedOrder.orderDescription || '');
+      payload.append('karigarDod', extractDateOnly(updatedOrder.karigarDod) || '');
+      payload.append('alterationDetails', updatedOrder.alterationDetails || '');
+
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        body: payload
+      });
+
+      setTimeout(() => {
+        fetchOrdersFromSheet();
+      }, 1500);
+    } catch (err) {
+      console.error("Error saving Karigar Work Order:", err);
+    }
+  };
+
+  const exportCSV = () => {
+    const headers = "Order Sheet,Customer,Contact,Item,Purity,Gold Wt,Diamond Wt,Sales,Executive,Status\n";
+    const rows = orders.map(o => `${o.orderSheetNo},${o.customerName},${o.contactNumber},${o.jewelleryItem},${o.purity},${o.goldWeight},${o.diamondWeight},${o.salesPerson},${o.orderPerson},${o.productStatus}`).join("\n");
+    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Namah_Jewellers_Orders.csv';
+    a.click();
+  };
+
+  const buildWhatsAppMessage = (order) => {
+    let msg = `*Karigar Work Order*\n\n` +
+      `🔢 *Order Sheet:* ${order.orderSheetNo || 'N/A'}\n` +
+      `💍 *Jewellery Item:* ${order.jewelleryItem || 'N/A'}\n` +
+      `🏷️ *Tag Number:* ${order.tagNumber || 'N/A'}\n` +
+      `🛠️ *Karigar:* ${order.karigarName || 'N/A'}\n`;
+
+    if (order.goldWeight) msg += `🟡 *Gold Weight:* ${order.goldWeight}g\n`;
+    if (order.diamondWeight) msg += `💎 *Diamond Weight:* ${order.diamondWeight}ct\n`;
+    if (order.colorTone) msg += `🎨 *Color Tone:* ${order.colorTone}\n`;
+    if (order.purity) msg += `✨ *Purity:* ${order.purity}\n`;
+    if (order.size) msg += `📏 *Size:* ${order.size}\n`;
+    if (order.orderDescription) msg += `📝 *Order Description:* ${order.orderDescription}\n`;
+    if (order.alterationDetails) msg += `🔄 *Alternation If Any:* ${order.alterationDetails}\n`;
+    
+    msg += `⏱️ *Karigar DOD:* ${extractDateOnly(order.karigarDod)}\n\n` +
+      `📷 *Image URL:* ${formatDriveUrl(order)}`;
+
+    return msg;
+  };
+
+  // Group unique customers for CRM view
+  const uniqueCustomers = useMemo(() => {
+    const map = {};
+    orders.forEach(o => {
+      if (!o.customerName) return;
+      const key = o.contactNumber || o.customerName;
+      if (!map[key]) {
+        map[key] = {
+          customerName: o.customerName,
+          contactNumber: o.contactNumber || 'N/A',
+          ordersCount: 0,
+          salesPersons: new Set(),
+          ordersList: []
+        };
+      }
+      map[key].ordersCount += 1;
+      if (o.salesPerson) map[key].salesPersons.add(o.salesPerson);
+      map[key].ordersList.push(o);
+    });
+    return Object.values(map);
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      if ((order.orderStatus || '').toLowerCase() === 'delivered' || (order.productStatus || '').toLowerCase() === 'delivered') {
+        return false;
+      }
+
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        (order.customerName && order.customerName.toLowerCase().includes(q)) ||
+        (order.orderSheetNo && order.orderSheetNo.toLowerCase().includes(q)) ||
+        (order.tagNumber && order.tagNumber.toLowerCase().includes(q)) ||
+        (order.jewelleryItem && order.jewelleryItem.toLowerCase().includes(q)) ||
+        (order.contactNumber && order.contactNumber.toLowerCase().includes(q));
+
+      if (!matchesSearch) return false;
+      if (filterSalesperson !== 'ALL' && order.salesPerson !== filterSalesperson) return false;
+      if (filterExecutive !== 'ALL' && order.orderPerson !== filterExecutive) return false;
+      if (filterWorkType !== 'ALL' && (order.orderType || '').toUpperCase() !== filterWorkType) return false;
+      if (filterStatus !== 'ALL' && (order.productStatus || 'Under Process') !== filterStatus) return false;
+
+      return true;
+    });
+  }, [orders, searchQuery, filterSalesperson, filterExecutive, filterWorkType, filterStatus]);
+
+  return (
+    <div className="min-h-screen bg-[#111318] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950">
+      {/* TOP NAVBAR */}
+      <header className="bg-[#181b22]/90 backdrop-blur-md border-b border-slate-800/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-2xl">
+        <div className="flex items-center gap-3.5">
+          <div className="bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-300 p-2.5 rounded-2xl shadow-lg shadow-amber-500/20">
+            <Sparkles className="w-5 h-5 text-slate-950 font-bold" />
+          </div>
+          <div>
+            <h1 className="text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500">
+              NAMAH JEWELLERS CRM
+            </h1>
+            <p className="text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Client Relations & Operations Desk
+            </p>
+          </div>
+        </div>
+
+        {/* NAVIGATION TABS */}
+        <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner">
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'orders'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" /> Orders Desk
+          </button>
+          <button
+            onClick={() => setActiveTab('crm')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'crm'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" /> Client Directory (CRM)
+          </button>
+          <button
+            onClick={() => setActiveTab('karigar')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'karigar'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" /> Karigar Work Orders
+          </button>
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'attendance'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" /> Attendance
+          </button>
+        </nav>
+      </header>
+
+      {/* MAIN CONTENT */}
+      <main className="flex-1 p-6 max-w-[1450px] w-full mx-auto space-y-6">
+        {activeTab === 'orders' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Active Orders</p>
+                  <h3 className="text-2xl font-black text-white mt-1">{filteredOrders.length}</h3>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Package className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
+                  <h3 className="text-2xl font-black text-amber-400 mt-1">
+                    {filteredOrders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed').length}
+                  </h3>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <Clock className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Bill Pending</p>
+                  <h3 className="text-2xl font-black text-emerald-400 mt-1">
+                    {filteredOrders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending')).length}
+                  </h3>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex items-center justify-between shadow-xl">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed & Ready</p>
+                  <h3 className="text-2xl font-black text-purple-400 mt-1">
+                    {filteredOrders.filter(o => o.isOn && o.productStatus === 'Packed').length}
+                  </h3>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 flex flex-col lg:flex-row items-center justify-between gap-4 shadow-2xl">
+              <div className="flex items-center gap-3 w-full lg:w-auto">
+                <button
+                  onClick={exportCSV}
+                  className="bg-[#222630] hover:bg-[#2c3240] text-slate-300 border border-slate-700/80 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
+                >
+                  <Download className="w-4 h-4 text-slate-400" /> Export CSV
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('new-order')}
+                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-orange-500/20"
+                >
+                  <PlusCircle className="w-4 h-4 text-slate-950" /> Sales Order Intake
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end text-xs">
+                <div className="relative flex-1 sm:w-44">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search Order, Tag, Customer..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#111318] border border-slate-700/80 rounded-xl pl-8 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#111318] border border-slate-700/80 rounded-xl px-3 py-1.5">
+                  <Filter className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-slate-400 text-[11px]">Sales:</span>
+                  <select
+                    value={filterSalesperson}
+                    onChange={(e) => setFilterSalesperson(e.target.value)}
+                    className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#181b22]">All Salespersons</option>
+                    {['Sohil', 'Mohit', 'Hema', 'Akansha', 'Yogita', 'Ziya', 'Deepika'].map(s => (
+                      <option key={s} value={s} className="bg-[#181b22]">{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#111318] border border-slate-700/80 rounded-xl px-3 py-1.5">
+                  <span className="text-slate-400 text-[11px]">Desk:</span>
+                  <select
+                    value={filterExecutive}
+                    onChange={(e) => setFilterExecutive(e.target.value)}
+                    className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#181b22]">All Executives</option>
+                    <option value="Amardeep" className="bg-[#181b22]">Amardeep</option>
+                    <option value="Gautam" className="bg-[#181b22]">Gautam</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#111318] border border-slate-700/80 rounded-xl px-3 py-1.5">
+                  <span className="text-slate-400 text-[11px]">Type:</span>
+                  <select
+                    value={filterWorkType}
+                    onChange={(e) => setFilterWorkType(e.target.value)}
+                    className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#181b22]">ALL TYPES</option>
+                    <option value="NEW" className="bg-[#181b22]">NEW</option>
+                    <option value="CUSTOMIZATION" className="bg-[#181b22]">CUSTOMIZATION</option>
+                    <option value="REPAIR" className="bg-[#181b22]">REPAIR</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#111318] border border-slate-700/80 rounded-xl px-3 py-1.5">
+                  <span className="text-slate-400 text-[11px]">Status:</span>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
+                  >
+                    <option value="ALL" className="bg-[#181b22]">ALL STATUS</option>
+                    <option value="Under Process" className="bg-[#181b22]">Under Process</option>
+                    <option value="Ready but bill pending" className="bg-[#181b22]">Ready but bill pending</option>
+                    <option value="Packed" className="bg-[#181b22]">Packed</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* ORDERS TABLE */}
+            <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl overflow-x-auto shadow-2xl">
+              <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                <thead className="bg-[#121419] text-amber-500/90 uppercase font-black tracking-wider border-b border-slate-800 text-[11px]">
+                  <tr>
+                    <th className="p-4 w-20">IMAGE</th>
+                    <th className="p-4">ORDER SHEET / TAG</th>
+                    <th className="p-4">CUSTOMER & SALES</th>
+                    <th className="p-4">JEWELLERY SPECS</th>
+                    <th className="p-4">ORDER EXECUTIVE</th>
+                    <th className="p-4">PLACE ORDER ➔</th>
+                    <th className="p-4 text-center">ON/OFF</th>
+                    <th className="p-4">PRODUCT STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="p-12 text-center text-slate-500 text-sm font-medium">
+                        {loading ? (
+                          <div className="flex items-center justify-center gap-2 text-amber-400">
+                            <Clock className="w-4 h-4 animate-spin" /> Syncing with Google Sheets...
+                          </div>
+                        ) : (
+                          'No orders found matching selected filters.'
+                        )}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((order, idx) => (
+                      <tr key={idx} className="hover:bg-[#20242e]/60 transition-all group">
+                        <td className="p-4">
+                          {formatDriveUrl(order) ? (
+                            <img
+                              src={formatDriveUrl(order)}
+                              alt=""
+                              className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md group-hover:scale-105 transition-transform"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 bg-[#212530] rounded-xl flex flex-col items-center justify-center border border-slate-700/60 text-slate-500 text-[10px] font-semibold">
+                              <span>Product</span>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="p-4 space-y-1">
+                          <h4 className="text-sm font-black text-amber-400 tracking-wide">
+                            {order.orderSheetNo || `NJ-2026-00${idx + 1}`}
+                          </h4>
+                          <p className="text-[10px] text-slate-400 font-mono">
+                            {order.tagNumber || 'TAG-8821'}
+                          </p>
+                          <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                            (order.orderType || '').toUpperCase() === 'CUSTOMIZATION'
+                              ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
+                              : (order.orderType || '').toUpperCase() === 'REPAIR'
+                              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}>
+                            {order.orderType || 'NEW'}
+                          </span>
+                        </td>
+
+                        <td className="p-4 space-y-0.5">
+                          <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                            {order.customerName || 'Sanjay Agarwal'}
+                            <button 
+                              onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
+                              className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
+                            >
+                              CRM Profile
+                            </button>
+                          </h4>
+                          <p className="text-[11px] text-slate-400">
+                            {order.contactNumber || '+91 98765 12345'}
+                          </p>
+                          <p className="text-[11px] font-bold text-amber-400/90 pt-0.5">
+                            Sales: {order.salesPerson || 'Sohil'}
+                          </p>
+                        </td>
+
+                        <td className="p-4 space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem || 'Necklace'}</span>
+                            {order.purity && <span className="text-[11px] font-black text-amber-300">({order.purity})</span>}
+                          </div>
+                          <div className="text-[11px] text-slate-300 space-x-1">
+                            {order.goldWeight && <span>Gold: <strong className="text-amber-400 font-bold">{order.goldWeight}g</strong></span>}
+                            {order.goldWeight && order.diamondWeight && <span className="text-slate-600">|</span>}
+                            {order.diamondWeight && <span>Dia: <strong className="text-amber-400 font-bold">{order.diamondWeight}ct</strong></span>}
+                          </div>
+                          <p className="text-[11px] text-slate-400">
+                            {order.colorTone || ''} {order.size ? `| Size: ${order.size}` : ''}
+                          </p>
+                        </td>
+
+                        <td className="p-4">
+                          <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
+                            {order.orderPerson || 'Amardeep'}
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          {!order.isOn ? (
+                            <button
+                              onClick={() => setSelectedOrderForKarigar(order)}
+                              className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1"
+                            >
+                              Place order
+                            </button>
+                          ) : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending' ? (
+                            <button
+                              onClick={() => setSelectedOrderForKarigar(order)}
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Received from Karigar</span>
+                            </button>
+                          ) : order.productStatus === 'Packed' ? (
+                            <button
+                              onClick={() => setSelectedOrderForKarigar(order)}
+                              className="text-xs font-bold text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 px-3 py-1.5 rounded-xl border border-purple-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Ready to delivery</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedOrderForKarigar(order)}
+                              className="text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5"
+                            >
+                              <Check className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Assign to Karigar</span>
+                            </button>
+                          )}
+                        </td>
+
+                        <td className="p-4 text-center">
+                          <button
+                            disabled={!order.isOn}
+                            onClick={() => order.isOn && toggleOrderSwitch(idx)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                              !order.isOn
+                                ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
+                                : 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
+                            }`}
+                          >
+                            <ToggleRight className="w-4 h-4 text-emerald-400" />
+                            <span>ON</span>
+                          </button>
+                        </td>
+
+                        <td className="p-4">
+                          {order.isOn ? (
+                            <select
+                              value={order.productStatus || 'Under Process'}
+                              onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none ${
+                                order.productStatus === 'Packed'
+                                  ? 'bg-purple-900/30 text-purple-300 border-purple-600/40'
+                                  : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending'
+                                  ? 'bg-emerald-900/30 text-emerald-300 border-emerald-600/40'
+                                  : 'bg-amber-900/30 text-amber-300 border-amber-600/40'
+                              }`}
+                            >
+                              <option value="Under Process" className="bg-[#181b22] text-amber-300">Under Process</option>
+                              <option value="Ready but bill pending" className="bg-[#181b22] text-emerald-300">Ready but bill pending</option>
+                              <option value="Packed" className="bg-[#181b22] text-purple-300">Packed</option>
+                            </select>
+                          ) : (
+                            <span className="text-slate-500 text-xs italic">-- Not Placed --</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* CLIENT DIRECTORY (CRM) TAB */}
+        {activeTab === 'crm' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-amber-400 flex items-center gap-2">
+                  <Users className="w-5 h-5" /> Client Directory & CRM History
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Manage customer profiles, contact numbers, and complete order histories.</p>
+              </div>
+              <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-xl text-xs font-bold">
+                Total Unique Clients: {uniqueCustomers.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {uniqueCustomers.map((client, idx) => (
+                <div key={idx} className="bg-[#111318] border border-slate-800/90 rounded-2xl p-4 space-y-3 shadow-xl hover:border-amber-500/40 transition-all">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-100">{client.customerName}</h4>
+                      <p className="text-xs text-amber-400 font-mono mt-0.5">{client.contactNumber}</p>
+                    </div>
+                    <span className="px-2 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 rounded-lg text-[10px] font-bold">
+                      {client.ordersCount} Order(s)
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-slate-400 space-y-1">
+                    <p>Associated Sales: <strong className="text-slate-200">{Array.from(client.salesPersons).join(', ')}</strong></p>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedCustomerCRM(client)}
+                    className="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-md"
+                  >
+                    View Client Purchase History
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* NEW ORDER INTAKE TAB */}
+        {activeTab === 'new-order' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 max-w-4xl mx-auto shadow-2xl">
+            <div className="border-b border-slate-800 pb-4 mb-6">
+              <h2 className="text-xl font-black text-amber-400 flex items-center gap-2">
+                <PlusCircle className="w-6 h-6" /> Sales Order Intake
+              </h2>
+            </div>
+
+            <form onSubmit={handleCreateOrder} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Sales Person Name *</label>
+                  <select
+                    required
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.salesPerson}
+                    onChange={(e) => setFormData({ ...formData, salesPerson: e.target.value })}
+                  >
+                    <option value="" disabled>Select Salesperson</option>
+                    {['Sohil', 'Mohit', 'Hema', 'Akansha', 'Yogita', 'Ziya', 'Deepika'].map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Support Person *</label>
+                  <select
+                    required
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.orderPerson}
+                    onChange={(e) => setFormData({ ...formData, orderPerson: e.target.value })}
+                  >
+                    <option value="" disabled>Select Executive</option>
+                    <option value="Amardeep">Amardeep</option>
+                    <option value="Gautam">Gautam</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Type *</label>
+                  <select
+                    required
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.orderType}
+                    onChange={(e) => setFormData({ ...formData, orderType: e.target.value })}
+                  >
+                    <option value="" disabled>Select Order Type</option>
+                    <option value="NEW">NEW</option>
+                    <option value="REPAIR">REPAIR</option>
+                    <option value="CUSTOMIZATION">CUSTOMIZATION</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter customer name"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.customerName}
+                    onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Contact Number</label>
+                  <input
+                    type="text"
+                    placeholder="Enter contact number"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.contactNumber}
+                    onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Sheet Number *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. NJ-2026-004"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.orderSheetNo}
+                    onChange={(e) => setFormData({ ...formData, orderSheetNo: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* CAMERA CAPTURE INPUT FOR MOBILE */}
+              <div className="p-4 bg-[#111318] border border-slate-800/80 rounded-xl space-y-3">
+                <label className="block text-xs font-bold text-amber-400 uppercase">
+                  📷 Product Photo Capture (Direct Camera / Upload)
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg">
+                    <Camera className="w-4 h-4" /> Click / Take Photo
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="camera" 
+                      onChange={handleImageCapture} 
+                      className="hidden" 
+                    />
+                  </label>
+                  {formData.imagePreviewLocal && (
+                    <img src={formData.imagePreviewLocal} alt="" className="w-12 h-12 rounded-lg object-cover border border-amber-500" />
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Jewellery Item Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Necklace, Bangle, Ring"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.jewelleryItem}
+                    onChange={(e) => setFormData({ ...formData, jewelleryItem: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Tag Number *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. TAG-8821"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.tagNumber}
+                    onChange={(e) => setFormData({ ...formData, tagNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-[#111318] border border-slate-800/80 rounded-xl space-y-4">
+                <h4 className="text-xs font-bold text-amber-400 uppercase">Gold & Diamond Specifications</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Gold Wt (g)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 45.2"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      value={formData.goldWeight}
+                      onChange={(e) => setFormData({ ...formData, goldWeight: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Diamond Wt (ct)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2.15"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      value={formData.diamondWeight}
+                      onChange={(e) => setFormData({ ...formData, diamondWeight: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Gold Purity *</label>
+                    <select
+                      required
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      value={formData.purity}
+                      onChange={(e) => setFormData({ ...formData, purity: e.target.value })}
+                    >
+                      <option value="" disabled>Select Purity</option>
+                      <option value="22kt">22kt Gold</option>
+                      <option value="18kt">18kt Gold</option>
+                      <option value="14kt">14kt Gold</option>
+                      <option value="9kt">9kt Gold</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Color Tone</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Yellow Gold"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      value={formData.colorTone}
+                      onChange={(e) => setFormData({ ...formData, colorTone: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Size (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 16 inch / 2.4"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      value={formData.size}
+                      onChange={(e) => setFormData({ ...formData, size: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Description *</label>
+                  <textarea
+                    rows="3"
+                    required
+                    placeholder="Enter order details..."
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.orderDescription}
+                    onChange={(e) => setFormData({ ...formData, orderDescription: e.target.value })}
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Special Remarks</label>
+                  <textarea
+                    rows="3"
+                    placeholder="Enter special remarks..."
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.specialRemarks}
+                    onChange={(e) => setFormData({ ...formData, specialRemarks: e.target.value })}
+                  ></textarea>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Taken Date</label>
+                  <input
+                    type="date"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.orderTakenDate}
+                    onChange={(e) => setFormData({ ...formData, orderTakenDate: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Promised Delivery Date *</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    value={formData.deliveryDate}
+                    onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-slate-800">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                >
+                  {submitting ? 'Saving to Drive & Sheets...' : 'Save Order to Google Sheets'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* KARIGAR WORK ORDERS TAB */}
+        {activeTab === 'karigar' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
+              <Send className="w-5 h-5" /> Active Karigar Work Orders
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {orders.filter(o => o.placingStatus || o.karigarName).map((order, idx) => (
+                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-xs font-black text-amber-400">{order.orderSheetNo}</span>
+                      <h4 className="text-sm font-bold text-slate-100">{order.jewelleryItem}</h4>
+                    </div>
+                    {formatDriveUrl(order) && (
+                      <img src={formatDriveUrl(order)} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-800" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">Karigar: <strong className="text-amber-300">{order.karigarName || 'Unassigned'}</strong></p>
+                  <p className="text-xs text-slate-400">Karigar DOD: <strong className="text-emerald-400">{extractDateOnly(order.karigarDod)}</strong></p>
+                  <button onClick={() => setWhatsappModalData(order)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs w-full transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20">
+                    <Send className="w-3.5 h-3.5" /> Send WhatsApp Slip
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ATTENDANCE TAB */}
+        {activeTab === 'attendance' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
+              <UserCheck className="w-5 h-5" /> Staff Attendance Register
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {attendance.map((staff, idx) => (
+                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 flex justify-between items-center shadow-xl">
+                  <div>
+                    <h4 className="font-bold text-slate-200 text-sm">{staff.name}</h4>
+                    <p className="text-xs text-slate-500">{staff.role}</p>
+                  </div>
+                  <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">{staff.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* MODAL: CUSTOMER CRM PROFILE HISTORY */}
+      {selectedCustomerCRM && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-md font-bold text-amber-400">{selectedCustomerCRM.customerName} - CRM Profile</h3>
+                <p className="text-xs text-slate-400">Contact: {selectedCustomerCRM.contactNumber}</p>
+              </div>
+              <button onClick={() => setSelectedCustomerCRM(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Order History ({selectedCustomerCRM.ordersList.length})</h4>
+              <div className="space-y-2">
+                {selectedCustomerCRM.ordersList.map((ord, i) => (
+                  <div key={i} className="bg-[#111318] border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-amber-400">{ord.orderSheetNo} - {ord.jewelleryItem}</p>
+                      <p className="text-[11px] text-slate-400">Tag: {ord.tagNumber} | Salesperson: {ord.salesPerson}</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold">
+                      {ord.productStatus || 'Under Process'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-800">
+              <button onClick={() => setSelectedCustomerCRM(null)} className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold">Close Profile</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ASSIGN / UPDATE KARIGAR WITH OVERRIDE FIELDS */}
+      {selectedOrderForKarigar && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-md font-bold text-amber-400">
+                {selectedOrderForKarigar.karigarName ? 'Update Karigar Placing Details' : 'Assign Order to Karigar'}
+              </h3>
+              <button onClick={() => setSelectedOrderForKarigar(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleKarigarSubmit} className="space-y-4">
+              <div className="p-3 bg-[#111318] rounded-xl text-xs text-slate-300 space-y-1">
+                <p><strong className="text-amber-400">Order Sheet:</strong> {selectedOrderForKarigar.orderSheetNo}</p>
+                <p><strong className="text-amber-400">Jewellery Item:</strong> {selectedOrderForKarigar.jewelleryItem}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Karigar Name *</label>
+                  <input
+                    type="text"
+                    required
+                    name="karigarName"
+                    defaultValue={selectedOrderForKarigar.karigarName || ''}
+                    placeholder="e.g. Craftsman Vijay"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Karigar Delivery Date (DOD) *</label>
+                  <input
+                    type="date"
+                    required
+                    name="karigarDod"
+                    defaultValue={extractDateOnly(selectedOrderForKarigar.karigarDod) || ''}
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+                  />
+                </div>
+              </div>
+
+              {/* EDITABLE SPECS FOR POLICY OVERRIDE */}
+              <div className="p-3 bg-[#111318] border border-slate-800/80 rounded-xl space-y-3">
+                <h4 className="text-[11px] font-bold text-amber-400 uppercase">Review / Override Specifications for Karigar</h4>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Gold Weight (g)</label>
+                    <input
+                      type="text"
+                      name="goldWeight"
+                      defaultValue={selectedOrderForKarigar.goldWeight || ''}
+                      placeholder="e.g. 45.2"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Diamond Weight (ct)</label>
+                    <input
+                      type="text"
+                      name="diamondWeight"
+                      defaultValue={selectedOrderForKarigar.diamondWeight || ''}
+                      placeholder="e.g. 2.15"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Purity</label>
+                    <select
+                      name="purity"
+                      defaultValue={selectedOrderForKarigar.purity || ''}
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                    >
+                      <option value="" disabled>Select Purity</option>
+                      <option value="22kt">22kt</option>
+                      <option value="18kt">18kt</option>
+                      <option value="14kt">14kt</option>
+                      <option value="9kt">9kt</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Color Tone</label>
+                    <input
+                      type="text"
+                      name="colorTone"
+                      defaultValue={selectedOrderForKarigar.colorTone || ''}
+                      placeholder="e.g. Yellow Gold"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Size</label>
+                    <input
+                      type="text"
+                      name="size"
+                      defaultValue={selectedOrderForKarigar.size || ''}
+                      placeholder="e.g. 16 inch"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-400 mb-1">Order Description</label>
+                  <textarea
+                    name="orderDescription"
+                    rows="2"
+                    defaultValue={selectedOrderForKarigar.orderDescription || ''}
+                    placeholder="Enter order description..."
+                    className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Alteration Details / Special Instructions</label>
+                <textarea
+                  name="alterationDetails"
+                  rows="2"
+                  defaultValue={selectedOrderForKarigar.alterationDetails || ''}
+                  placeholder="Instructions or alterations for karigar..."
+                  className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                <button type="button" onClick={() => setSelectedOrderForKarigar(null)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs">Save & Generate WhatsApp Slip</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: WHATSAPP SLIP PREVIEW */}
+      {whatsappModalData && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-md font-bold text-emerald-400">WhatsApp Karigar Work Order</h3>
+              <button onClick={() => setWhatsappModalData(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all">
+              {buildWhatsAppMessage(whatsappModalData)}
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(buildWhatsAppMessage(whatsappModalData));
+                  alert("Message caption copied to clipboard!");
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1"
+              >
+                <Copy className="w-3.5 h-3.5" /> Copy Message
+              </button>
+              <a
+                href={'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMessage(whatsappModalData))}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+              >
+                <Send className="w-4 h-4" /> Open WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
