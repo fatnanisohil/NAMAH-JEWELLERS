@@ -414,31 +414,28 @@ const handleKarigarSubmit = async (e) => {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payloadObj = {
-        action: 'updateKarigar',
-        orderSheetNo: updatedOrder.orderSheetNo || '',
-        customerName: updatedOrder.customerName || '',
-        contactNumber: updatedOrder.contactNumber || '',
-        jewelleryItem: updatedOrder.jewelleryItem || '',
-        tagNumber: updatedOrder.tagNumber || '',
-        karigarName: updatedOrder.karigarName || '',
-        goldWeight: updatedOrder.goldWeight || '',
-        diamondWeight: updatedOrder.diamondWeight || '',
-        colorTone: updatedOrder.colorTone || '',
-        purity: updatedOrder.purity || '',
-        size: updatedOrder.size || '',
-        orderDescription: updatedOrder.orderDescription || '',
-        karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
-        alterationDetails: updatedOrder.alterationDetails || ''
-      };
+      // Send parameters as a clean URL-encoded form body
+      const payload = new URLSearchParams();
+      payload.append('action', 'updateKarigar');
+      payload.append('orderSheetNo', updatedOrder.orderSheetNo || '');
+      payload.append('customerName', updatedOrder.customerName || '');
+      payload.append('contactNumber', updatedOrder.contactNumber || '');
+      payload.append('jewelleryItem', updatedOrder.jewelleryItem || '');
+      payload.append('tagNumber', updatedOrder.tagNumber || '');
+      payload.append('karigarName', updatedOrder.karigarName || '');
+      payload.append('goldWeight', updatedOrder.goldWeight || '');
+      payload.append('diamondWeight', updatedOrder.diamondWeight || '');
+      payload.append('colorTone', updatedOrder.colorTone || '');
+      payload.append('purity', updatedOrder.purity || '');
+      payload.append('size', updatedOrder.size || '');
+      payload.append('orderDescription', updatedOrder.orderDescription || '');
+      payload.append('karigarDod', extractDateOnly(updatedOrder.karigarDod) || '');
+      payload.append('alterationDetails', updatedOrder.alterationDetails || '');
 
       await fetch(GOOGLE_SHEETS_API_URL, {
         method: "POST",
-        mode: "no-cors", // <-- Prevents browser CORS blocking
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify(payloadObj)
+        mode: "no-cors", // Bypasses browser CORS preflight blocks on Google redirect domains
+        body: payload
       });
 
       setTimeout(() => {
