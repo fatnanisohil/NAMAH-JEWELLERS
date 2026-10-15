@@ -271,8 +271,9 @@ export default function App() {
       const optimisticNewOrder = {
         ...submissionData,
         isOn: false,
-        productStatus: 'Under Process',
-        placingStatus: false
+        productStatus: '--Not Assign--',
+        placingStatus: false,
+        karigarName: ''
       };
 
       setOrders(prev => [optimisticNewOrder, ...prev]);
@@ -327,6 +328,11 @@ export default function App() {
     }
 
     const targetOrder = filteredOrders[index];
+    if (!targetOrder.karigarName) {
+      alert("🔒 Cannot turn ON: Order is not yet assigned to a Karigar.");
+      return;
+    }
+
     const newIsOn = !targetOrder.isOn;
 
     setOrders(prev => prev.map(o => 
@@ -400,7 +406,7 @@ export default function App() {
       alterationDetails: data.get('alterationDetails'),
       placingStatus: true,
       isOn: true,
-      productStatus: selectedOrderForKarigar.productStatus || 'Under Process'
+      productStatus: selectedOrderForKarigar.productStatus === '--Not Assign--' || !selectedOrderForKarigar.productStatus ? 'Under Process' : selectedOrderForKarigar.productStatus
     };
 
     setOrders(prev => prev.map(o => (o.orderSheetNo === updatedOrder.orderSheetNo && o.tagNumber === updatedOrder.tagNumber) ? updatedOrder : o));
@@ -511,9 +517,9 @@ export default function App() {
       if (filterWorkType !== 'ALL' && (order.orderType || '').toUpperCase() !== filterWorkType) return false;
       
       if (filterStatus !== 'ALL') {
-        const pStatus = (order.productStatus || 'Under Process').toLowerCase();
+        const pStatus = (order.productStatus || '--Not Assign--').toLowerCase();
         if (filterStatus === 'Under Process') {
-          if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'ready but bill pending' && pStatus !== 'packed')) {
+          if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'packed' && !pStatus.includes('not assign'))) {
             return false;
           }
         } else if (filterStatus === 'Ready but bill pending') {
@@ -669,7 +675,7 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
                   <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                    {orders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => o.isOn && o.productStatus !== 'Ready but bill pending' && o.productStatus !== 'Ready but Bill Pending' && o.productStatus !== 'Packed' && !String(o.productStatus || '').includes('Not Assign') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -884,7 +890,7 @@ export default function App() {
                         </td>
 
                         <td className="p-4">
-                          {!order.isOn ? (
+                          {!order.karigarName ? (
                             <button
                               onClick={() => {
                                 if (!isAuthorizedToEdit) {
@@ -948,31 +954,36 @@ export default function App() {
 
                         <td className="p-4 text-center">
                           <button
-                            disabled={!order.isOn || !isAuthorizedToEdit}
-                            onClick={() => order.isOn && isAuthorizedToEdit && toggleOrderSwitch(idx)}
+                            disabled={!order.karigarName || !isAuthorizedToEdit}
+                            onClick={() => order.karigarName && isAuthorizedToEdit && toggleOrderSwitch(idx)}
                             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
-                              !order.isOn || !isAuthorizedToEdit
+                              !order.karigarName || !isAuthorizedToEdit
                                 ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
-                                : 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
+                                : order.isOn
+                                ? 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
+                                : 'bg-slate-900 border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
                             }`}
                           >
-                            <ToggleRight className="w-4 h-4 text-emerald-400" />
-                            <span>ON</span>
+                            {order.karigarName && order.isOn ? (
+                              <>
+                                <ToggleRight className="w-4 h-4 text-emerald-400" />
+                                <span>ON</span>
+                              </>
+                            ) : (
+                              <>
+                                <ToggleLeft className="w-4 h-4 text-slate-500" />
+                                <span>OFF</span>
+                              </>
+                            )}
                           </button>
                         </td>
 
                         <td className="p-4">
-                          {order.isOn && isAuthorizedToEdit ? (
+                          {order.karigarName && order.isOn && isAuthorizedToEdit ? (
                             <select
-                              value={order.productStatus || 'Under Process'}
+                              value={order.productStatus || '--Not Assign--'}
                               onChange={(e) => handleStatusChange(order.orderSheetNo, order.tagNumber, e.target.value)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none ${
-                                order.productStatus === 'Packed'
-                                  ? 'bg-purple-900/30 text-purple-300 border-purple-600/40'
-                                  : order.productStatus === 'Ready but bill pending' || order.productStatus === 'Ready but Bill Pending'
-                                  ? 'bg-emerald-900/30 text-emerald-300 border-emerald-600/40'
-                                  : 'bg-amber-900/30 text-amber-300 border-amber-600/40'
-                              }`}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border focus:outline-none bg-amber-900/30 text-amber-300 border-amber-600/40"
                             >
                               <option value="Under Process" className="bg-[#181b22] text-amber-300">Under Process</option>
                               <option value="Ready but bill pending" className="bg-[#181b22] text-emerald-300">Ready but bill pending</option>
@@ -980,13 +991,15 @@ export default function App() {
                             </select>
                           ) : (
                             <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border whitespace-nowrap ${
-                              (order.productStatus || '').toLowerCase() === 'packed'
+                              (order.productStatus || '').includes('Not Assign')
+                                ? 'bg-slate-900/60 text-slate-400 border-slate-700/60'
+                                : (order.productStatus || '').toLowerCase() === 'packed'
                                 ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
                                 : (order.productStatus || '').toLowerCase().includes('bill pending')
                                 ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
                                 : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
                             }`}>
-                              {order.productStatus || 'Under Process'}
+                              {order.productStatus || '--Not Assign--'}
                             </span>
                           )}
                         </td>
