@@ -18,7 +18,11 @@ import {
   Sparkles,
   Layers,
   Copy,
-  Users
+  Users,
+  Lock,
+  LogOut,
+  ShieldCheck,
+  LogIn
 } from 'lucide-react';
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
@@ -26,13 +30,21 @@ const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders');
   
-  // Role & User Session State for Security
+  // Authentication & Session State (Defaults to logged out / View-Only)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('namah_logged_in') === 'true';
+  });
   const [currentUserRole, setCurrentUserRole] = useState(() => {
     return localStorage.getItem('namah_user_role') || 'Salesperson';
   });
   const [currentUserName, setCurrentUserName] = useState(() => {
-    return localStorage.getItem('namah_user_name') || 'Sohil';
+    return localStorage.getItem('namah_user_name') || 'Guest Viewer';
   });
+  
+  // Login Modal State
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginNameInput, setLoginNameInput] = useState('Admin');
+  const [loginPinInput, setLoginPinInput] = useState('');
 
   const [orders, setOrders] = useState(() => {
     const saved = localStorage.getItem('namah_local_orders');
@@ -75,7 +87,7 @@ export default function App() {
     contactNumber: '',
     orderType: '',
     orderSheetNo: '',
-    salesPerson: currentUserName,
+    salesPerson: 'Sohil',
     jewelleryItem: '',
     tagNumber: '',
     productImageLink: '',
@@ -173,11 +185,48 @@ export default function App() {
   }, [orders]);
 
   useEffect(() => {
+    localStorage.setItem('namah_logged_in', isLoggedIn);
     localStorage.setItem('namah_user_role', currentUserRole);
     localStorage.setItem('namah_user_name', currentUserName);
-  }, [currentUserRole, currentUserName]);
+  }, [isLoggedIn, currentUserRole, currentUserName]);
 
-  const isAuthorizedToEdit = currentUserRole === 'Admin' || currentUserRole === 'Order Processing';
+  // Authorization check: Only Admin or Order Processing (Amardeep / Gautam) can edit operational states
+  const isAuthorizedToEdit = isLoggedIn && (currentUserRole === 'Admin' || currentUserRole === 'Order Processing');
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    
+    let assignedRole = 'Salesperson';
+    let userName = loginNameInput;
+
+    if (userName === 'Admin') {
+      if (loginPinInput !== '1234') {
+        alert("❌ Incorrect Admin PIN! (Default pin is 1234)");
+        return;
+      }
+      assignedRole = 'Admin';
+      userName = 'Senior Admin';
+    } else if (userName === 'Amardeep' || userName === 'Gautam') {
+      assignedRole = 'Order Processing';
+    } else {
+      assignedRole = 'Salesperson';
+    }
+
+    setCurrentUserRole(assignedRole);
+    setCurrentUserName(userName);
+    setIsLoggedIn(true);
+    setShowLoginModal(false);
+    setLoginPinInput('');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUserRole('Salesperson');
+    setCurrentUserName('Guest Viewer');
+    localStorage.removeItem('namah_logged_in');
+    localStorage.removeItem('namah_user_role');
+    localStorage.removeItem('namah_user_name');
+  };
 
   const handleImageCapture = (e) => {
     const file = e.target.files[0];
@@ -236,7 +285,7 @@ export default function App() {
         contactNumber: '',
         orderType: '',
         orderSheetNo: '',
-        salesPerson: currentUserName,
+        salesPerson: 'Sohil',
         jewelleryItem: '',
         tagNumber: '',
         productImageLink: '',
@@ -265,7 +314,7 @@ export default function App() {
 
   const toggleOrderSwitch = async (index) => {
     if (!isAuthorizedToEdit) {
-      alert("🔒 Access Restricted: Only Order Processing Executives (Amardeep / Gautam) or Admins can toggle order status.");
+      alert("🔒 Access Restricted: Please login as Admin or Order Desk (Amardeep / Gautam) to modify orders.");
       return;
     }
 
@@ -296,7 +345,7 @@ export default function App() {
 
   const handleStatusChange = async (orderSheetNo, tagNumber, newStatus) => {
     if (!isAuthorizedToEdit) {
-      alert("🔒 Access Restricted: Only Order Processing Executives or Admins can change product statuses.");
+      alert("🔒 Access Restricted: Please login as Admin or Order Desk to change product statuses.");
       return;
     }
 
@@ -325,7 +374,7 @@ export default function App() {
   const handleKarigarSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
-      alert("🔒 Access Restricted: Only Order Processing Executives or Admins can assign orders to karigars.");
+      alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
       return;
     }
 
@@ -472,31 +521,32 @@ export default function App() {
                 NAMAH JEWELLERS CRM
               </h1>
               <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                Role: <strong className="text-amber-400">{currentUserRole} ({currentUserName})</strong>
+                <span className={`w-1.5 h-1.5 rounded-full ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-500'}`}></span>
+                Mode: <strong className="text-amber-400">{isLoggedIn ? `${currentUserName} (${currentUserRole})` : 'View-Only Mode'}</strong>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1 bg-[#111317] border border-slate-700/80 rounded-xl px-2 py-1 sm:hidden">
-            <select
-              value={currentUserRole}
-              onChange={(e) => {
-                const role = e.target.value;
-                setCurrentUserRole(role);
-                if (role === 'Order Processing') setCurrentUserName('Amardeep');
-                else if (role === 'Admin') setCurrentUserName('Senior Admin');
-                else setCurrentUserName('Sohil');
-              }}
-              className="bg-transparent text-amber-400 text-[11px] font-bold focus:outline-none"
-            >
-              <option value="Salesperson" className="bg-[#181b22]">Sales Staff</option>
-              <option value="Order Processing" className="bg-[#181b22]">Order Desk</option>
-              <option value="Admin" className="bg-[#181b22]">Admin</option>
-            </select>
+          <div className="flex sm:hidden items-center">
+            {isLoggedIn ? (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md"
+              >
+                <LogIn className="w-3.5 h-3.5" /> Login
+              </button>
+            )}
           </div>
         </div>
 
+        {/* NAVIGATION TABS */}
         <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner overflow-x-auto w-full sm:w-auto justify-start sm:justify-center">
           <button
             onClick={() => setActiveTab('orders')}
@@ -540,23 +590,29 @@ export default function App() {
           </button>
         </nav>
 
-        <div className="hidden sm:flex items-center gap-2 bg-[#111317] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs">
-          <span className="text-slate-400">Role:</span>
-          <select
-            value={currentUserRole}
-            onChange={(e) => {
-              const role = e.target.value;
-              setCurrentUserRole(role);
-              if (role === 'Order Processing') setCurrentUserName('Amardeep');
-              else if (role === 'Admin') setCurrentUserName('Senior Admin');
-              else setCurrentUserName('Sohil');
-            }}
-            className="bg-transparent text-amber-400 font-bold focus:outline-none cursor-pointer"
-          >
-            <option value="Salesperson" className="bg-[#181b22]">Sales Staff (View & Intake)</option>
-            <option value="Order Processing" className="bg-[#181b22]">Order Desk (Amardeep/Gautam)</option>
-            <option value="Admin" className="bg-[#181b22]">Senior / Admin</option>
-          </select>
+        {/* TOP RIGHT LOGIN / USER BUTTON */}
+        <div className="hidden sm:flex items-center gap-3">
+          {isLoggedIn ? (
+            <div className="flex items-center gap-2">
+              <div className="bg-[#111317] border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span className="text-slate-200 font-bold">{currentUserName} ({currentUserRole})</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+            >
+              <LogIn className="w-4 h-4 text-slate-950" /> Admin / Order Person Login
+            </button>
+          )}
         </div>
       </header>
 
@@ -792,7 +848,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Only Order Desk Executives can place orders.");
+                                  alert("🔒 Restricted: Please login as Admin or Order Desk to place orders.");
                                   return;
                                 }
                                 setSelectedOrderForKarigar(order);
@@ -809,7 +865,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Only Order Desk Executives can manage karigar returns.");
+                                  alert("🔒 Restricted: Please login as Admin or Order Desk to manage karigar returns.");
                                   return;
                                 }
                                 setSelectedOrderForKarigar(order);
@@ -823,7 +879,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Only Order Desk Executives can manage deliveries.");
+                                  alert("🔒 Restricted: Please login as Admin or Order Desk to manage deliveries.");
                                   return;
                                 }
                                 setSelectedOrderForKarigar(order);
@@ -837,7 +893,7 @@ export default function App() {
                             <button
                               onClick={() => {
                                 if (!isAuthorizedToEdit) {
-                                  alert("🔒 Restricted: Only Order Desk Executives can assign orders to karigars.");
+                                  alert("🔒 Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
                                   return;
                                 }
                                 setSelectedOrderForKarigar(order);
@@ -1041,7 +1097,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* CAMERA CAPTURE INPUT FOR MOBILE */}
               <div className="p-4 bg-[#111318] border border-slate-800/80 rounded-xl space-y-3">
                 <label className="block text-xs font-bold text-amber-400 uppercase">
                   📷 Product Photo Capture (Direct Camera / Upload)
@@ -1264,6 +1319,70 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* MODAL: LOGIN / SIGN IN */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#181b22] border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <h3 className="text-md font-bold text-amber-400">Admin & Order Desk Login</h3>
+              </div>
+              <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Select Authorized Role</label>
+                <select
+                  className="w-full bg-[#111318] border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
+                  value={loginNameInput}
+                  onChange={(e) => setLoginNameInput(e.target.value)}
+                >
+                  <option value="Admin">Admin (Requires PIN)</option>
+                  <option value="Amardeep">Amardeep (Order Desk)</option>
+                  <option value="Gautam">Gautam (Order Desk)</option>
+                </select>
+              </div>
+
+              {loginNameInput === 'Admin' && (
+                <div>
+                  <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Admin Security PIN</label>
+                  <input
+                    type="password"
+                    placeholder="Enter PIN (e.g. 1234)"
+                    className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
+                    value={loginPinInput}
+                    onChange={(e) => setLoginPinInput(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLoginModal(false)}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20"
+                >
+                  Sign In
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL: CUSTOMER CRM PROFILE HISTORY */}
       {selectedCustomerCRM && (
