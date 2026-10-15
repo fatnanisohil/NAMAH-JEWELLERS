@@ -385,7 +385,7 @@ export default function App() {
     }
   };
 
-  const handleKarigarSubmit = async (e) => {
+const handleKarigarSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -414,31 +414,36 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payload = new URLSearchParams();
-      payload.append('action', 'updateKarigar');
-      payload.append('orderSheetNo', updatedOrder.orderSheetNo || '');
-      payload.append('customerName', updatedOrder.customerName || '');
-      payload.append('contactNumber', updatedOrder.contactNumber || '');
-      payload.append('jewelleryItem', updatedOrder.jewelleryItem || '');
-      payload.append('tagNumber', updatedOrder.tagNumber || '');
-      payload.append('karigarName', updatedOrder.karigarName || '');
-      payload.append('goldWeight', updatedOrder.goldWeight || '');
-      payload.append('diamondWeight', updatedOrder.diamondWeight || '');
-      payload.append('colorTone', updatedOrder.colorTone || '');
-      payload.append('purity', updatedOrder.purity || '');
-      payload.append('size', updatedOrder.size || '');
-      payload.append('orderDescription', updatedOrder.orderDescription || '');
-      payload.append('karigarDod', extractDateOnly(updatedOrder.karigarDod) || '');
-      payload.append('alterationDetails', updatedOrder.alterationDetails || '');
+      const payloadObj = {
+        action: 'updateKarigar',
+        orderSheetNo: updatedOrder.orderSheetNo || '',
+        customerName: updatedOrder.customerName || '',
+        contactNumber: updatedOrder.contactNumber || '',
+        jewelleryItem: updatedOrder.jewelleryItem || '',
+        tagNumber: updatedOrder.tagNumber || '',
+        karigarName: updatedOrder.karigarName || '',
+        goldWeight: updatedOrder.goldWeight || '',
+        diamondWeight: updatedOrder.diamondWeight || '',
+        colorTone: updatedOrder.colorTone || '',
+        purity: updatedOrder.purity || '',
+        size: updatedOrder.size || '',
+        orderDescription: updatedOrder.orderDescription || '',
+        karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
+        alterationDetails: updatedOrder.alterationDetails || ''
+      };
 
       await fetch(GOOGLE_SHEETS_API_URL, {
         method: "POST",
-        body: payload
+        mode: "no-cors", // <-- Prevents browser CORS blocking
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(payloadObj)
       });
 
       setTimeout(() => {
         fetchOrdersFromSheet();
-      }, 1500);
+      }, 2000);
     } catch (err) {
       console.error("Error saving Karigar Work Order:", err);
     }
