@@ -385,7 +385,7 @@ export default function App() {
     }
   };
 
-const handleKarigarSubmit = async (e) => {
+const handleKarigarSubmit = (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -413,37 +413,56 @@ const handleKarigarSubmit = async (e) => {
     setSelectedOrderForKarigar(null);
     setWhatsappModalData(updatedOrder);
 
-    try {
-      // Send parameters as a clean URL-encoded form body
-      const payload = new URLSearchParams();
-      payload.append('action', 'updateKarigar');
-      payload.append('orderSheetNo', updatedOrder.orderSheetNo || '');
-      payload.append('customerName', updatedOrder.customerName || '');
-      payload.append('contactNumber', updatedOrder.contactNumber || '');
-      payload.append('jewelleryItem', updatedOrder.jewelleryItem || '');
-      payload.append('tagNumber', updatedOrder.tagNumber || '');
-      payload.append('karigarName', updatedOrder.karigarName || '');
-      payload.append('goldWeight', updatedOrder.goldWeight || '');
-      payload.append('diamondWeight', updatedOrder.diamondWeight || '');
-      payload.append('colorTone', updatedOrder.colorTone || '');
-      payload.append('purity', updatedOrder.purity || '');
-      payload.append('size', updatedOrder.size || '');
-      payload.append('orderDescription', updatedOrder.orderDescription || '');
-      payload.append('karigarDod', extractDateOnly(updatedOrder.karigarDod) || '');
-      payload.append('alterationDetails', updatedOrder.alterationDetails || '');
+    // Create a hidden native HTML form to bypass browser fetch/CORS blocks completely
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GOOGLE_SHEETS_API_URL;
+    form.target = 'hidden_iframe'; // Submits silently without navigating away
 
-      await fetch(GOOGLE_SHEETS_API_URL, {
-        method: "POST",
-        mode: "no-cors", // Bypasses browser CORS preflight blocks on Google redirect domains
-        body: payload
-      });
+    const payloadFields = {
+      action: 'updateKarigar',
+      orderSheetNo: updatedOrder.orderSheetNo || '',
+      customerName: updatedOrder.customerName || '',
+      contactNumber: updatedOrder.contactNumber || '',
+      jewelleryItem: updatedOrder.jewelleryItem || '',
+      tagNumber: updatedOrder.tagNumber || '',
+      karigarName: updatedOrder.karigarName || '',
+      goldWeight: updatedOrder.goldWeight || '',
+      diamondWeight: updatedOrder.diamondWeight || '',
+      colorTone: updatedOrder.colorTone || '',
+      purity: updatedOrder.purity || '',
+      size: updatedOrder.size || '',
+      orderDescription: updatedOrder.orderDescription || '',
+      karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
+      alterationDetails: updatedOrder.alterationDetails || ''
+    };
 
-      setTimeout(() => {
-        fetchOrdersFromSheet();
-      }, 2000);
-    } catch (err) {
-      console.error("Error saving Karigar Work Order:", err);
+    // Append hidden iframe if it doesn't exist
+    let iframe = document.getElementById('hidden_iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.name = 'hidden_iframe';
+      iframe.id = 'hidden_iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
     }
+
+    // Attach all fields to the form
+    Object.keys(payloadFields).forEach(key => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = payloadFields[key];
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    setTimeout(() => {
+      fetchOrdersFromSheet();
+    }, 2000);
   };
 
   const exportCSV = () => {
