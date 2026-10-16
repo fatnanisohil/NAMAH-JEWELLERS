@@ -27,7 +27,6 @@ import {
 } from 'lucide-react';
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
-const [karigarSubTab, setKarigarSubTab] = useState('Amardeep');
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders');
@@ -1417,71 +1416,33 @@ const activeKarigarOrders = useMemo(() => {
           </div>
         )}
 
-        {activeTab === 'karigar' && (() => {
-          const amardeepOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'amardeep');
-          const gautamOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'gautam');
-          const displayedKarigarOrders = karigarSubTab === 'Amardeep' ? amardeepOrders : gautamOrders;
-
-          return (
-            <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-                <h3 className="text-lg font-black text-amber-400 flex items-center gap-2">
-                  <Send className="w-5 h-5" /> Active Karigar Work Orders
-                </h3>
-                
-                <div className="flex bg-[#111317] p-1.5 rounded-xl border border-slate-800">
-                  <button
-                    onClick={() => setKarigarSubTab('Amardeep')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                      karigarSubTab === 'Amardeep'
-                        ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Amardeep ({amardeepOrders.length})
-                  </button>
-                  <button
-                    onClick={() => setKarigarSubTab('Gautam')}
-                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                      karigarSubTab === 'Gautam'
-                        ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    Gautam ({gautamOrders.length})
+        {activeTab === 'karigar' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
+              <Send className="w-5 h-5" /> Active Karigar Work Orders ({activeKarigarOrders.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {activeKarigarOrders.map((order, idx) => (
+                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-xs font-black text-amber-400">{order.orderSheetNo}</span>
+                      <h4 className="text-sm font-bold text-slate-100">{order.jewelleryItem}</h4>
+                    </div>
+                    {formatDriveUrl(order) && (
+                      <img src={formatDriveUrl(order)} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-800" />
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-400">Karigar: <strong className="text-amber-300">{order.karigarName || 'Unassigned'}</strong></p>
+                  <p className="text-xs text-slate-400">Karigar DOD: <strong className="text-emerald-400">{extractDateOnly(order.karigarDod)}</strong></p>
+                  <button onClick={() => setWhatsappModalData(order)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs w-full transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20">
+                    <Send className="w-3.5 h-3.5" /> Send WhatsApp Slip
                   </button>
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {displayedKarigarOrders.length === 0 ? (
-                  <div className="col-span-3 py-12 text-center text-slate-500 text-sm font-medium">
-                    No active karigar orders found for {karigarSubTab}.
-                  </div>
-                ) : (
-                  displayedKarigarOrders.map((order, idx) => (
-                    <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-xs font-black text-amber-400">{order.orderSheetNo}</span>
-                          <h4 className="text-sm font-bold text-slate-100">{order.jewelleryItem}</h4>
-                        </div>
-                        {formatDriveUrl(order) && (
-                          <img src={formatDriveUrl(order)} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-800" />
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400">Karigar: <strong className="text-amber-300">{order.karigarName || 'Unassigned'}</strong></p>
-                      <p className="text-xs text-slate-400">Karigar DOD: <strong className="text-emerald-400">{extractDateOnly(order.karigarDod)}</strong></p>
-                      <button onClick={() => setWhatsappModalData(order)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs w-full transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20">
-                        <Send className="w-3.5 h-3.5" /> Send WhatsApp Slip
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+              ))}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
         {activeTab === 'attendance' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
