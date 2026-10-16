@@ -385,7 +385,8 @@ export default function App() {
     }
   };
 
-const handleKarigarSubmit = (e) => {
+  // Native HTML Form POST Submission to Guarantee Form Responses 2 Logging & Form Responses 1 Updates
+  const handleKarigarSubmit = (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -413,11 +414,11 @@ const handleKarigarSubmit = (e) => {
     setSelectedOrderForKarigar(null);
     setWhatsappModalData(updatedOrder);
 
-    // Create a hidden native HTML form to bypass browser fetch/CORS blocks completely
+    // Native Hidden Form Submission to bypass CORS and guarantee Form Responses 2 row append
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = GOOGLE_SHEETS_API_URL;
-    form.target = 'hidden_iframe'; // Submits silently without navigating away
+    form.target = 'hidden_iframe';
 
     const payloadFields = {
       action: 'updateKarigar',
@@ -437,7 +438,6 @@ const handleKarigarSubmit = (e) => {
       alterationDetails: updatedOrder.alterationDetails || ''
     };
 
-    // Append hidden iframe if it doesn't exist
     let iframe = document.getElementById('hidden_iframe');
     if (!iframe) {
       iframe = document.createElement('iframe');
@@ -447,7 +447,6 @@ const handleKarigarSubmit = (e) => {
       document.body.appendChild(iframe);
     }
 
-    // Attach all fields to the form
     Object.keys(payloadFields).forEach(key => {
       const input = document.createElement('input');
       input.type = 'hidden';
@@ -648,7 +647,7 @@ const handleKarigarSubmit = (e) => {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Send className="w-3.5 h-3.5" /> Karigar
+            <Send className="w-3.5 h-3.5" /> Karigar ({orders.filter(o => o.placingStatus || o.karigarName).length})
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
@@ -728,7 +727,7 @@ const handleKarigarSubmit = (e) => {
                 className={`bg-[#181b22] border rounded-2xl p-3.5 sm:p-4 flex items-center justify-between shadow-xl cursor-pointer transition-all ${filterStatus === 'Ready but bill pending' ? 'border-emerald-500 bg-emerald-500/5' : 'border-slate-800/90 hover:border-emerald-500/50'}`}
               >
                 <div>
-                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready / Pending</p>
+                  <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready but bill pending</p>
                   <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
                     {orders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
                   </h3>
@@ -820,7 +819,7 @@ const handleKarigarSubmit = (e) => {
                   >
                     <option value="ALL" className="bg-[#181b22]">All Status</option>
                     <option value="Under Process" className="bg-[#181b22]">Under Process</option>
-                    <option value="Ready but bill pending" className="bg-[#181b22]">Bill Pending</option>
+                    <option value="Ready but bill pending" className="bg-[#181b22]">Ready but bill pending</option>
                     <option value="Packed" className="bg-[#181b22]">Packed</option>
                   </select>
                 </div>
@@ -893,15 +892,17 @@ const handleKarigarSubmit = (e) => {
                           </td>
 
                           <td className="p-4 space-y-0.5">
-                            <h4 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
-                              {order.customerName || 'Sanjay Agarwal'}
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-bold text-slate-100">
+                                {order.customerName || 'Sanjay Agarwal'}
+                              </h4>
                               <button 
                                 onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
-                                className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
+                                className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold"
                               >
-                                CRM
+                                CRM Profile
                               </button>
-                            </h4>
+                            </div>
                             <p className="text-[11px] text-slate-400">
                               {order.contactNumber || '+91 98765 12345'}
                             </p>
@@ -1152,7 +1153,7 @@ const handleKarigarSubmit = (e) => {
 
                   <button
                     onClick={() => setSelectedCustomerCRM(client)}
-                    className="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-md"
+                    className="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-md cursor-pointer"
                   >
                     View Client Purchase History
                   </button>
@@ -1433,7 +1434,7 @@ const handleKarigarSubmit = (e) => {
         {activeTab === 'karigar' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
             <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
-              <Send className="w-5 h-5" /> Active Karigar Work Orders
+              <Send className="w-5 h-5" /> Active Karigar Work Orders ({orders.filter(o => o.placingStatus || o.karigarName).length})
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {orders.filter(o => o.placingStatus || o.karigarName).map((order, idx) => (
@@ -1541,7 +1542,7 @@ const handleKarigarSubmit = (e) => {
         </div>
       )}
 
-      {/* MODAL: CUSTOMER CRM PROFILE HISTORY */}
+      {/* MODAL: CUSTOMER CRM PROFILE HISTORY WITH CORRECT STATUS */}
       {selectedCustomerCRM && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1564,8 +1565,16 @@ const handleKarigarSubmit = (e) => {
                       <p className="font-bold text-amber-400">{ord.orderSheetNo} - {ord.jewelleryItem}</p>
                       <p className="text-[11px] text-slate-400">Tag: {ord.tagNumber} | Salesperson: {ord.salesPerson}</p>
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-bold">
-                      {ord.karigarName ? (ord.productStatus || 'Under Process') : '--Not Assign--'}
+                    <span className={`px-2.5 py-1 rounded-lg border font-bold text-xs ${
+                      !ord.productStatus || ord.productStatus.includes('Not Assign')
+                        ? 'bg-slate-900 text-slate-400 border-slate-700'
+                        : ord.productStatus.toLowerCase() === 'packed'
+                        ? 'bg-purple-900/20 text-purple-300 border-purple-600/30'
+                        : ord.productStatus.toLowerCase().includes('bill pending')
+                        ? 'bg-emerald-900/20 text-emerald-300 border-emerald-600/30'
+                        : 'bg-amber-900/20 text-amber-300 border-amber-600/30'
+                    }`}>
+                      {ord.productStatus && !ord.productStatus.includes('Not Assign') ? ord.productStatus : '--Not Assign--'}
                     </span>
                   </div>
                 ))}
