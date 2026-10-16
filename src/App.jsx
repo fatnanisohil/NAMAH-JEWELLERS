@@ -1418,13 +1418,8 @@ const activeKarigarOrders = useMemo(() => {
         )}
 
         {activeTab === 'karigar' && (() => {
-          // Local sub-tab state for Karigar view
-          const [karigarSubTab, setKarigarSubTab] = useState('Amardeep');
-
-          // Filter active karigar orders specifically by order person
           const amardeepOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'amardeep');
           const gautamOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'gautam');
-          
           const displayedKarigarOrders = karigarSubTab === 'Amardeep' ? amardeepOrders : gautamOrders;
 
           return (
@@ -1434,7 +1429,6 @@ const activeKarigarOrders = useMemo(() => {
                   <Send className="w-5 h-5" /> Active Karigar Work Orders
                 </h3>
                 
-                {/* Amardeep & Gautam Sub-Tabs */}
                 <div className="flex bg-[#111317] p-1.5 rounded-xl border border-slate-800">
                   <button
                     onClick={() => setKarigarSubTab('Amardeep')}
