@@ -28,8 +28,16 @@ import {
 
 const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM-mOJ0xw9llzwPhO3aszIvC_FtJLNZ1ebWWoUUQ3qltPFTmrfHAJuZQsu1iWA/exec";
 
+// Proper Case text helper function
+const toProperCase = (str) => {
+  if (!str || typeof str !== 'string') return str;
+  return str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders');
+  const [karigarSubTab, setKarigarSubTab] = useState('Amardeep');
+  const [previewImage, setPreviewImage] = useState(null);
   
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('namah_logged_in') === 'true';
@@ -150,7 +158,6 @@ export default function App() {
             const localMatch = prevOrders.find(o => o.orderSheetNo === serverOrder.orderSheetNo && o.tagNumber === serverOrder.tagNumber);
             return {
               ...serverOrder,
-              // Automatically normalize text fields to Proper Case
               customerName: toProperCase(serverOrder.customerName),
               jewelleryItem: toProperCase(serverOrder.jewelleryItem),
               karigarName: toProperCase(serverOrder.karigarName),
@@ -225,7 +232,7 @@ export default function App() {
       }
       assignedRole = 'Order Processing';
     } else if (userName === 'Viewer') {
-      if (loginPinInput !== '0000') { // You can change '0000' to any PIN you want
+      if (loginPinInput !== '0000') {
         alert("❌ Incorrect Viewer PIN!");
         return;
       }
@@ -445,7 +452,6 @@ export default function App() {
         alterationDetails: updatedOrder.alterationDetails || ''
       });
 
-      // Send as a GET request with query params to completely bypass CORS/redirect payload drops
       await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
         method: "GET"
       });
@@ -511,11 +517,10 @@ export default function App() {
     return Object.values(map);
   }, [orders]);
 
-const activeKarigarOrders = useMemo(() => {
+  const activeKarigarOrders = useMemo(() => {
     return orders.filter(o => {
       const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
       const pStatus = (o.productStatus || '').toLowerCase();
-      // Directly mirrors the exact row-level logic of your 69 Under Process counter card
       return !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
     });
   }, [orders]);
@@ -768,14 +773,14 @@ const activeKarigarOrders = useMemo(() => {
               <div className="flex items-center gap-3 w-full lg:w-auto">
                 <button
                   onClick={exportCSV}
-                  className="bg-[#222630] hover:bg-[#2c3240] text-slate-300 border border-slate-700/80 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
+                  className="bg-[#222630] hover:bg-[#2c3240] text-slate-300 border border-slate-700/80 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer"
                 >
                   <Download className="w-4 h-4 text-slate-400" /> Export CSV
                 </button>
 
                 <button
                   onClick={() => setActiveTab('new-order')}
-                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-orange-500/20"
+                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-lg shadow-orange-500/20 cursor-pointer"
                 >
                   <PlusCircle className="w-4 h-4 text-slate-950" /> Sales Order Intake
                 </button>
@@ -874,7 +879,8 @@ const activeKarigarOrders = useMemo(() => {
                               <img
                                 src={formatDriveUrl(order)}
                                 alt=""
-                                className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md group-hover:scale-105 transition-transform"
+                                onClick={() => setPreviewImage(formatDriveUrl(order))}
+                                className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md group-hover:scale-105 transition-transform cursor-pointer"
                               />
                             ) : (
                               <div className="w-14 h-14 bg-[#212530] rounded-xl flex flex-col items-center justify-center border border-slate-700/60 text-slate-500 text-[10px] font-semibold">
@@ -944,7 +950,7 @@ const activeKarigarOrders = useMemo(() => {
                                   }
                                   setSelectedOrderForKarigar(order);
                                 }}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 ${
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
                                   isAuthorizedToEdit
                                     ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
                                     : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
@@ -1062,7 +1068,7 @@ const activeKarigarOrders = useMemo(() => {
                         <tr key={idx} className="hover:bg-[#20242e]/60 transition-all group">
                           <td className="p-4">
                             {formatDriveUrl(order) ? (
-                              <img src={formatDriveUrl(order)} alt="" className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md" />
+                              <img src={formatDriveUrl(order)} alt="" onClick={() => setPreviewImage(formatDriveUrl(order))} className="w-14 h-14 rounded-xl object-cover bg-slate-900 border border-slate-700/60 shadow-md cursor-pointer" />
                             ) : (
                               <div className="w-14 h-14 bg-[#212530] rounded-xl flex items-center justify-center border border-slate-700/60 text-slate-500 text-[10px]">Product</div>
                             )}
@@ -1178,7 +1184,7 @@ const activeKarigarOrders = useMemo(() => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Sales Person Name *</label>
                   <select
                     required
-                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 cursor-pointer"
                     value={formData.salesPerson}
                     onChange={(e) => setFormData({ ...formData, salesPerson: e.target.value })}
                   >
@@ -1193,7 +1199,7 @@ const activeKarigarOrders = useMemo(() => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Order Support Person *</label>
                   <select
                     required
-                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 cursor-pointer"
                     value={formData.orderPerson}
                     onChange={(e) => setFormData({ ...formData, orderPerson: e.target.value })}
                   >
@@ -1207,7 +1213,7 @@ const activeKarigarOrders = useMemo(() => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Order Type *</label>
                   <select
                     required
-                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
+                    className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 cursor-pointer"
                     value={formData.orderType}
                     onChange={(e) => setFormData({ ...formData, orderType: e.target.value })}
                   >
@@ -1272,7 +1278,7 @@ const activeKarigarOrders = useMemo(() => {
                     />
                   </label>
                   {formData.imagePreviewLocal && (
-                    <img src={formData.imagePreviewLocal} alt="" className="w-12 h-12 rounded-lg object-cover border border-amber-500" />
+                    <img src={formData.imagePreviewLocal} alt="" onClick={() => setPreviewImage(formData.imagePreviewLocal)} className="w-12 h-12 rounded-lg object-cover border border-amber-500 cursor-pointer" />
                   )}
                 </div>
               </div>
@@ -1332,7 +1338,7 @@ const activeKarigarOrders = useMemo(() => {
                     <label className="block text-xs text-slate-400 mb-1">Gold Purity *</label>
                     <select
                       required
-                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-slate-200 cursor-pointer"
                       value={formData.purity}
                       onChange={(e) => setFormData({ ...formData, purity: e.target.value })}
                     >
@@ -1420,7 +1426,7 @@ const activeKarigarOrders = useMemo(() => {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20"
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
                 >
                   {submitting ? 'Saving to Drive & Sheets...' : 'Save Order to Google Sheets'}
                 </button>
@@ -1429,33 +1435,71 @@ const activeKarigarOrders = useMemo(() => {
           </div>
         )}
 
-        {activeTab === 'karigar' && (
-          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
-              <Send className="w-5 h-5" /> Active Karigar Work Orders ({activeKarigarOrders.length})
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {activeKarigarOrders.map((order, idx) => (
-                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="text-xs font-black text-amber-400">{order.orderSheetNo}</span>
-                      <h4 className="text-sm font-bold text-slate-100">{order.jewelleryItem}</h4>
-                    </div>
-                    {formatDriveUrl(order) && (
-                      <img src={formatDriveUrl(order)} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-800" />
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400">Karigar: <strong className="text-amber-300">{order.karigarName || 'Unassigned'}</strong></p>
-                  <p className="text-xs text-slate-400">Karigar DOD: <strong className="text-emerald-400">{extractDateOnly(order.karigarDod)}</strong></p>
-                  <button onClick={() => setWhatsappModalData(order)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs w-full transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20">
-                    <Send className="w-3.5 h-3.5" /> Send WhatsApp Slip
+        {activeTab === 'karigar' && (() => {
+          const amardeepOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'amardeep');
+          const gautamOrders = activeKarigarOrders.filter(o => (o.orderPerson || '').toLowerCase() === 'gautam');
+          const displayedKarigarOrders = karigarSubTab === 'Amardeep' ? amardeepOrders : gautamOrders;
+
+          return (
+            <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
+                <h3 className="text-lg font-black text-amber-400 flex items-center gap-2">
+                  <Send className="w-5 h-5" /> Active Karigar Work Orders
+                </h3>
+                
+                <div className="flex bg-[#111317] p-1.5 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => setKarigarSubTab('Amardeep')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      karigarSubTab === 'Amardeep'
+                        ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Amardeep ({amardeepOrders.length})
+                  </button>
+                  <button
+                    onClick={() => setKarigarSubTab('Gautam')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      karigarSubTab === 'Gautam'
+                        ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Gautam ({gautamOrders.length})
                   </button>
                 </div>
-              ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {displayedKarigarOrders.length === 0 ? (
+                  <div className="col-span-3 py-12 text-center text-slate-500 text-sm font-medium">
+                    No active karigar orders found for {karigarSubTab}.
+                  </div>
+                ) : (
+                  displayedKarigarOrders.map((order, idx) => (
+                    <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-xs font-black text-amber-400">{order.orderSheetNo}</span>
+                          <h4 className="text-sm font-bold text-slate-100">{order.jewelleryItem}</h4>
+                        </div>
+                        {formatDriveUrl(order) && (
+                          <img src={formatDriveUrl(order)} alt="" onClick={() => setPreviewImage(formatDriveUrl(order))} className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-800 cursor-pointer" />
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-400">Karigar: <strong className="text-amber-300">{order.karigarName || 'Unassigned'}</strong></p>
+                      <p className="text-xs text-slate-400">Karigar DOD: <strong className="text-emerald-400">{extractDateOnly(order.karigarDod)}</strong></p>
+                      <button onClick={() => setWhatsappModalData(order)} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs w-full transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer">
+                        <Send className="w-3.5 h-3.5" /> Send WhatsApp Slip
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {activeTab === 'attendance' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
@@ -1487,7 +1531,6 @@ const activeKarigarOrders = useMemo(() => {
                 </div>
                 <h3 className="text-md font-bold text-amber-400">Secure Access Login Required</h3>
               </div>
-              {/* Note: The 'X' close button is intentionally removed here so users cannot bypass login */}
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -1538,7 +1581,7 @@ const activeKarigarOrders = useMemo(() => {
                 <h3 className="text-md font-bold text-amber-400">{selectedCustomerCRM.customerName} - CRM Profile</h3>
                 <p className="text-xs text-slate-400">Contact: {selectedCustomerCRM.contactNumber}</p>
               </div>
-              <button onClick={() => setSelectedCustomerCRM(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setSelectedCustomerCRM(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1569,7 +1612,7 @@ const activeKarigarOrders = useMemo(() => {
             </div>
 
             <div className="flex justify-end pt-3 border-t border-slate-800">
-              <button onClick={() => setSelectedCustomerCRM(null)} className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold">Close Profile</button>
+              <button onClick={() => setSelectedCustomerCRM(null)} className="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-semibold cursor-pointer">Close Profile</button>
             </div>
           </div>
         </div>
@@ -1582,7 +1625,7 @@ const activeKarigarOrders = useMemo(() => {
               <h3 className="text-md font-bold text-amber-400">
                 {selectedOrderForKarigar.karigarName ? 'Update Karigar Placing Details' : 'Assign Order to Karigar'}
               </h3>
-              <button onClick={() => setSelectedOrderForKarigar(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setSelectedOrderForKarigar(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1649,7 +1692,7 @@ const activeKarigarOrders = useMemo(() => {
                     <select
                       name="purity"
                       defaultValue={selectedOrderForKarigar.purity || ''}
-                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200"
+                      className="w-full bg-[#181b22] border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 cursor-pointer"
                     >
                       <option value="" disabled>Select Purity</option>
                       <option value="22kt">22kt</option>
@@ -1706,8 +1749,8 @@ const activeKarigarOrders = useMemo(() => {
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                <button type="button" onClick={() => setSelectedOrderForKarigar(null)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs">Save & Generate WhatsApp Slip</button>
+                <button type="button" onClick={() => setSelectedOrderForKarigar(null)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs cursor-pointer">Save & Generate WhatsApp Slip</button>
               </div>
             </form>
           </div>
@@ -1719,7 +1762,7 @@ const activeKarigarOrders = useMemo(() => {
           <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-md font-bold text-emerald-400">WhatsApp Karigar Work Order</h3>
-              <button onClick={() => setWhatsappModalData(null)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setWhatsappModalData(null)} className="text-slate-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1734,7 +1777,7 @@ const activeKarigarOrders = useMemo(() => {
                   navigator.clipboard.writeText(buildWhatsAppMessage(whatsappModalData));
                   alert("Message caption copied to clipboard!");
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5" /> Copy Message
               </button>
@@ -1750,12 +1793,29 @@ const activeKarigarOrders = useMemo(() => {
           </div>
         </div>
       )}
+
+      {/* Fullscreen Image Preview Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button 
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-12 right-0 bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-full border border-slate-700 cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Product Preview" 
+              className="max-w-full max-h-[85vh] rounded-2xl object-contain border border-amber-500/50 shadow-2xl bg-slate-900"
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ADDING FOR PROPER TEXT
-const toProperCase = (str) => {
-    if (!str || typeof str !== 'string') return str;
-    return str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
-  };
