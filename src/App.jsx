@@ -503,8 +503,8 @@ const activeKarigarOrders = useMemo(() => {
       const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
       const pStatus = (o.productStatus || '').toLowerCase();
       
-      // Matches the exact same logic used by your "Under Process" box counter (69)
-      const isUnderProcess = !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
+      // Exact match to the 69 Under Process box counter logic
+      const isUnderProcess = !isDelivered && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
       
       if (isUnderProcess && sheetNo) {
         map[compositeKey] = o;
