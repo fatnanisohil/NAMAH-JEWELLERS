@@ -405,7 +405,7 @@ export default function App() {
     }
   };
 
-  const handleKarigarSubmit = async (e) => {
+const handleKarigarSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -450,8 +450,8 @@ export default function App() {
         orderDescription: updatedOrder.orderDescription || '',
         karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
         alterationDetails: updatedOrder.alterationDetails || '',
-        productStatus: 'Under Process',
-        isOn: 'ON'
+        productStatus: 'Under Process', // <--- Ensures status is sent
+        isOn: 'ON'                      // <--- Forces toggle ON
       });
 
       await fetch(GOOGLE_SHEETS_API_URL, {
