@@ -1238,7 +1238,7 @@ export default function App() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. NJ-2026-004"
+                    placeholder="e.g. 7787"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
                     value={formData.orderSheetNo}
                     onChange={(e) => setFormData({ ...formData, orderSheetNo: e.target.value })}
@@ -1285,7 +1285,7 @@ export default function App() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. TAG-8821"
+                    placeholder="e.g. GS-NJ-5683"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
                     value={formData.tagNumber}
                     onChange={(e) => setFormData({ ...formData, tagNumber: e.target.value })}
