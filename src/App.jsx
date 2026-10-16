@@ -172,6 +172,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setShowLoginModal(true);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
     fetchOrdersFromSheet();
     const interval = setInterval(fetchOrdersFromSheet, 20000);
     return () => clearInterval(interval);
@@ -1472,18 +1478,16 @@ const activeKarigarOrders = useMemo(() => {
       </main>
 
       {showLoginModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-400">
                   <Lock className="w-4 h-4" />
                 </div>
-                <h3 className="text-md font-bold text-amber-400">Secure Access Login</h3>
+                <h3 className="text-md font-bold text-amber-400">Secure Access Login Required</h3>
               </div>
-              <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+              {/* Note: The 'X' close button is intentionally removed here so users cannot bypass login */}
             </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -1513,19 +1517,12 @@ const activeKarigarOrders = useMemo(() => {
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLoginModal(false)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
-                >
-                  Cancel
-                </button>
+              <div className="flex justify-end pt-2">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20"
+                  className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 cursor-pointer"
                 >
-                  Authenticate
+                  Authenticate & Open App
                 </button>
               </div>
             </form>
