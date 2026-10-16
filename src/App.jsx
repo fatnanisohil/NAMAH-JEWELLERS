@@ -405,7 +405,7 @@ export default function App() {
     }
   };
 
-const handleKarigarSubmit = async (e) => {
+  const handleKarigarSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -434,7 +434,7 @@ const handleKarigarSubmit = async (e) => {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payload = new URLSearchParams({
+      const params = new URLSearchParams({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -449,14 +449,11 @@ const handleKarigarSubmit = async (e) => {
         size: updatedOrder.size || '',
         orderDescription: updatedOrder.orderDescription || '',
         karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
-        alterationDetails: updatedOrder.alterationDetails || '',
-        productStatus: 'Under Process', // <--- Ensures status is sent
-        isOn: 'ON'                      // <--- Forces toggle ON
+        alterationDetails: updatedOrder.alterationDetails || ''
       });
 
-      await fetch(GOOGLE_SHEETS_API_URL, {
-        method: "POST",
-        body: payload
+      await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
+        method: "GET"
       });
 
       setTimeout(() => {
