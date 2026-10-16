@@ -58,7 +58,20 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-
+  const [attendance, setAttendance] = useState(() => {
+    const saved = localStorage.getItem('namah_attendance');
+    return saved ? JSON.parse(saved) : [
+      { name: 'Sohil', role: 'Sales', status: 'Present', checkIn: '10:00 AM', checkOut: '07:30 PM', workingHours: '9.5' },
+      { name: 'Mohit', role: 'Sales', status: 'Present', checkIn: '10:15 AM', checkOut: '07:30 PM', workingHours: '9.25' },
+      { name: 'Hema', role: 'Sales', status: 'Late', checkIn: '10:45 AM', checkOut: '07:30 PM', workingHours: '8.75' },
+      { name: 'Akansha', role: 'Sales', status: 'Present', checkIn: '09:55 AM', checkOut: '07:30 PM', workingHours: '9.5' },
+      { name: 'Yogita', role: 'Sales', status: 'On Field', checkIn: '11:00 AM', checkOut: '--', workingHours: '--' },
+      { name: 'Ziya', role: 'Sales', status: 'Present', checkIn: '10:05 AM', checkOut: '07:30 PM', workingHours: '9.4' },
+      { name: 'Deepika', role: 'Sales', status: 'Half Day', checkIn: '10:00 AM', checkOut: '02:30 PM', workingHours: '4.5' },
+      { name: 'Amardeep', role: 'Order Processing', status: 'Present', checkIn: '09:45 AM', checkOut: '08:00 PM', workingHours: '10.25' },
+      { name: 'Gautam', role: 'Order Processing', status: 'Present', checkIn: '09:50 AM', checkOut: '08:00 PM', workingHours: '10.1' }
+    ];
+  });
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -177,7 +190,9 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
- 
+  useEffect(() => {
+    localStorage.setItem('namah_attendance', JSON.stringify(attendance));
+  }, [attendance]);
 
   useEffect(() => {
     localStorage.setItem('namah_local_orders', JSON.stringify(orders));
@@ -419,7 +434,7 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payload = new URLSearchParams({
+      const params = new URLSearchParams({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -434,14 +449,11 @@ export default function App() {
         size: updatedOrder.size || '',
         orderDescription: updatedOrder.orderDescription || '',
         karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
-        alterationDetails: updatedOrder.alterationDetails || '',
-        productStatus: 'Under Process',
-        isOn: 'ON'
+        alterationDetails: updatedOrder.alterationDetails || ''
       });
 
-      await fetch(GOOGLE_SHEETS_API_URL, {
-        method: "POST",
-        body: payload
+      await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
+        method: "GET"
       });
 
       setTimeout(() => {
@@ -643,7 +655,16 @@ export default function App() {
           >
             <Send className="w-3.5 h-3.5" /> Karigar ({activeKarigarOrders.length})
           </button>
-          
+          <button
+            onClick={() => setActiveTab('attendance')}
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'attendance'
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" /> Attendance
+          </button>
         </nav>
 
         <div className="hidden sm:flex items-center gap-3">
@@ -937,16 +958,8 @@ export default function App() {
                               >
                                 Place order
                               </button>
-                            ) : (order.productStatus || '').toLowerCase() === 'ready but bill pending' || (order.productStatus || '').toLowerCase().includes('bill pending') ? (
-                              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
-                                Received from Karigar
-                              </span>
-                            ) : (order.productStatus || '').toLowerCase() === 'packed' ? (
-                              <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-3 py-1.5 rounded-xl border border-purple-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
-                                Ready for Delivery
-                              </span>
                             ) : (
-                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
+                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default">
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                                 <span>Assigned to Karigar</span>
                               </span>
@@ -1241,7 +1254,7 @@ export default function App() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 7787"
+                    placeholder="e.g. NJ-2026-004"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
                     value={formData.orderSheetNo}
                     onChange={(e) => setFormData({ ...formData, orderSheetNo: e.target.value })}
@@ -1288,7 +1301,7 @@ export default function App() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. GS-NJ-5683"
+                    placeholder="e.g. TAG-8821"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200"
                     value={formData.tagNumber}
                     onChange={(e) => setFormData({ ...formData, tagNumber: e.target.value })}
@@ -1488,7 +1501,24 @@ export default function App() {
           );
         })()}
 
-        
+        {activeTab === 'attendance' && (
+          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
+            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
+              <UserCheck className="w-5 h-5" /> Staff Attendance Register
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {attendance.map((staff, idx) => (
+                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 flex justify-between items-center shadow-xl">
+                  <div>
+                    <h4 className="font-bold text-slate-200 text-sm">{staff.name}</h4>
+                    <p className="text-xs text-slate-500">{staff.role}</p>
+                  </div>
+                  <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">{staff.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {showLoginModal && (
@@ -1522,7 +1552,7 @@ export default function App() {
                 <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Security PIN</label>
                 <input
                   type="password"
-                  placeholder="Enter security PIN/PASSWORD..."
+                  placeholder="Enter security PIN..."
                   className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
                   value={loginPinInput}
                   onChange={(e) => setLoginPinInput(e.target.value)}
@@ -1614,7 +1644,7 @@ export default function App() {
                     required
                     name="karigarName"
                     defaultValue={selectedOrderForKarigar.karigarName || ''}
-                    placeholder="e.g. SS, SARYU, RRR"
+                    placeholder="e.g. Craftsman Vijay"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
                   />
                 </div>
@@ -1737,56 +1767,25 @@ export default function App() {
               </button>
             </div>
 
-            {/* Image Preview inside the Modal */}
-            {formatDriveUrl(whatsappModalData) && (
-              <div className="flex justify-center bg-slate-900 p-2 rounded-xl border border-slate-800">
-                <img 
-                  src={formatDriveUrl(whatsappModalData)} 
-                  alt="Karigar Slip Preview" 
-                  className="max-h-48 rounded-lg object-contain"
-                />
-              </div>
-            )}
-
-            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all max-h-40 overflow-y-auto">
+            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all">
               {buildWhatsAppMessage(whatsappModalData)}
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <div className="flex justify-end gap-2">
               <button
-                onClick={async () => {
-                  const imageUrl = formatDriveUrl(whatsappModalData);
-                  const caption = buildWhatsAppMessage(whatsappModalData);
-                  
-                  // Copy text caption to clipboard
-                  navigator.clipboard.writeText(caption);
-
-                  // Try to copy image to clipboard if possible
-                  if (imageUrl && navigator.clipboard && window.ClipboardItem) {
-                    try {
-                      const imgResponse = await fetch(imageUrl);
-                      const blob = await imgResponse.blob();
-                      await navigator.clipboard.write([
-                        new ClipboardItem({ [blob.type]: blob })
-                      ]);
-                      alert("Image & caption copied! You can now press Ctrl+V directly into WhatsApp.");
-                    } catch (err) {
-                      alert("Caption copied! (Direct image copy blocked by browser, you can save/download image if needed).");
-                    }
-                  } else {
-                    alert("Caption copied to clipboard!");
-                  }
+                onClick={() => {
+                  navigator.clipboard.writeText(buildWhatsAppMessage(whatsappModalData));
+                  alert("Message caption copied to clipboard!");
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1 cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5" /> Copy Image & Caption
+                <Copy className="w-3.5 h-3.5" /> Copy Message
               </button>
-
               <a
                 href={'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMessage(whatsappModalData))}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
               >
                 <Send className="w-4 h-4" /> Open WhatsApp
               </a>
