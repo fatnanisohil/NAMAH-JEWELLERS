@@ -581,7 +581,7 @@ const activeKarigarOrders = useMemo(() => {
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500">
-                NAMAH JEWELLERS CRM
+                NAMAH JEWELLERS
               </h1>
               <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
                 <span className={`w-1.5 h-1.5 rounded-full ${isLoggedIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-500'}`}></span>
