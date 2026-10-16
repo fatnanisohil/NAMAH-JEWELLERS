@@ -1519,7 +1519,7 @@ export default function App() {
                 <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Security PIN</label>
                 <input
                   type="password"
-                  placeholder="Enter security PIN..."
+                  placeholder="Enter security PIN/PASSWORD..."
                   className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
                   value={loginPinInput}
                   onChange={(e) => setLoginPinInput(e.target.value)}
@@ -1611,7 +1611,7 @@ export default function App() {
                     required
                     name="karigarName"
                     defaultValue={selectedOrderForKarigar.karigarName || ''}
-                    placeholder="e.g. Craftsman Vijay"
+                    placeholder="e.g. SS, SARYU, RRR"
                     className="w-full bg-[#111318] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200"
                   />
                 </div>
