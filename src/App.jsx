@@ -434,7 +434,7 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payload = new URLSearchParams({
+      const payload = JSON.stringify({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -454,9 +454,9 @@ export default function App() {
         isOn: 'ON'
       });
 
-      // MUST be POST so doPost(e) handles it and updates Column U
       await fetch(GOOGLE_SHEETS_API_URL, {
         method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: payload
       });
 
