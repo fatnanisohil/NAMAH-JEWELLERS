@@ -493,14 +493,15 @@ export default function App() {
     return Object.values(map);
   }, [orders]);
 
-  const activeKarigarOrders = useMemo(() => {
+const activeKarigarOrders = useMemo(() => {
     const map = {};
     orders.forEach(o => {
       const sheetNo = String(o.orderSheetNo || '').trim();
       const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
-      const hasKarigar = o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== '');
+      const pStatus = (o.productStatus || '').toLowerCase();
+      const isUnderProcess = !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
       
-      if (!isDelivered && hasKarigar && sheetNo) {
+      if (isUnderProcess && sheetNo) {
         map[sheetNo] = o;
       }
     });
