@@ -647,7 +647,7 @@ export default function App() {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Send className="w-3.5 h-3.5" /> Karigar ({orders.filter(o => o.placingStatus || o.karigarName).length})
+            <Send className="w-3.5 h-3.5" /> Karigar ({orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).length})
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
