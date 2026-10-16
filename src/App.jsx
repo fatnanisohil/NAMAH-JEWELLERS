@@ -494,23 +494,12 @@ export default function App() {
   }, [orders]);
 
 const activeKarigarOrders = useMemo(() => {
-    const map = {};
-    orders.forEach(o => {
-      const sheetNo = String(o.orderSheetNo || '').trim();
-      const tagNo = String(o.tagNumber || '').trim();
-      const compositeKey = sheetNo + "_" + tagNo;
-      
+    return orders.filter(o => {
       const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
       const pStatus = (o.productStatus || '').toLowerCase();
-      
-      // This is the EXACT condition used by your Under Process counter card (69)
-      const isUnderProcess = !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
-      
-      if (isUnderProcess && sheetNo) {
-        map[compositeKey] = o;
-      }
+      // Directly mirrors the exact row-level logic of your 69 Under Process counter card
+      return !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
     });
-    return Object.values(map);
   }, [orders]);
 
   const filteredOrders = useMemo(() => {
