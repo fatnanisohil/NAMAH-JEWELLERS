@@ -409,7 +409,7 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payloadObj = {
+      const params = new URLSearchParams({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -425,15 +425,11 @@ export default function App() {
         orderDescription: updatedOrder.orderDescription || '',
         karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
         alterationDetails: updatedOrder.alterationDetails || ''
-      };
+      });
 
-      await fetch(GOOGLE_SHEETS_API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify(payloadObj)
+      // Send as a GET request with query params to completely bypass CORS/redirect payload drops
+      await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
+        method: "GET"
       });
 
       setTimeout(() => {
