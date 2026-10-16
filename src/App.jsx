@@ -31,7 +31,6 @@ const GOOGLE_SHEETS_API_URL = "https://script.google.com/macros/s/AKfycbzCUr7rdM
 export default function App() {
   const [activeTab, setActiveTab] = useState('orders');
   
-  // Authentication & Session State (Defaults to logged out / View-Only)
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('namah_logged_in') === 'true';
   });
@@ -42,7 +41,6 @@ export default function App() {
     return localStorage.getItem('namah_user_name') || 'Guest Viewer';
   });
   
-  // Login Modal State
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginNameInput, setLoginNameInput] = useState('Admin');
   const [loginPinInput, setLoginPinInput] = useState('');
@@ -71,18 +69,15 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filters
   const [filterSalesperson, setFilterSalesperson] = useState('ALL');
   const [filterExecutive, setFilterExecutive] = useState('ALL');
   const [filterWorkType, setFilterWorkType] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
 
-  // Modals
   const [selectedOrderForKarigar, setSelectedOrderForKarigar] = useState(null);
   const [whatsappModalData, setWhatsappModalData] = useState(null);
   const [selectedCustomerCRM, setSelectedCustomerCRM] = useState(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     customerName: '',
     contactNumber: '',
@@ -385,7 +380,6 @@ export default function App() {
     }
   };
 
-  // Native HTML Form POST Submission to Guarantee Form Responses 2 Logging & Form Responses 1 Updates
   const handleKarigarSubmit = (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
@@ -414,7 +408,6 @@ export default function App() {
     setSelectedOrderForKarigar(null);
     setWhatsappModalData(updatedOrder);
 
-    // Native Hidden Form Submission to bypass CORS and guarantee Form Responses 2 row append
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = GOOGLE_SHEETS_API_URL;
@@ -517,6 +510,20 @@ export default function App() {
     return Object.values(map);
   }, [orders]);
 
+  const activeKarigarOrders = useMemo(() => {
+    const map = {};
+    orders.forEach(o => {
+      const sheetNo = String(o.orderSheetNo || '').trim();
+      const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
+      const hasKarigar = o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== '');
+      
+      if (!isDelivered && hasKarigar && sheetNo) {
+        map[sheetNo] = o;
+      }
+    });
+    return Object.values(map);
+  }, [orders]);
+
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       if ((order.orderStatus || '').toLowerCase() === 'delivered' || (order.productStatus || '').toLowerCase() === 'delivered') {
@@ -570,7 +577,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#111318] text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 pb-16 md:pb-0">
-      {/* TOP NAVBAR */}
       <header className="bg-[#181b22]/95 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-center justify-between sticky top-0 z-30 shadow-2xl gap-3">
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-3">
@@ -607,7 +613,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* NAVIGATION TABS */}
         <nav className="flex bg-[#111317] p-1.5 rounded-2xl border border-slate-800/80 shadow-inner overflow-x-auto w-full sm:w-auto justify-start sm:justify-center">
           <button
             onClick={() => setActiveTab('orders')}
@@ -647,7 +652,7 @@ export default function App() {
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Send className="w-3.5 h-3.5" /> Karigar ({orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).length})
+            <Send className="w-3.5 h-3.5" /> Karigar ({activeKarigarOrders.length})
           </button>
           <button
             onClick={() => setActiveTab('attendance')}
@@ -661,7 +666,6 @@ export default function App() {
           </button>
         </nav>
 
-        {/* TOP RIGHT LOGIN / USER BUTTON */}
         <div className="hidden sm:flex items-center gap-3">
           {isLoggedIn ? (
             <div className="flex items-center gap-2">
@@ -687,7 +691,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
       <main className="flex-1 p-4 sm:p-6 max-w-[1450px] w-full mx-auto space-y-6">
         {activeTab === 'orders' && (
           <div className="space-y-6">
@@ -826,7 +829,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* ORDERS TABLE */}
             <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl overflow-x-auto shadow-2xl">
               <table className="w-full text-left text-xs text-slate-300 border-collapse min-w-[950px]">
                 <thead className="bg-[#121419] text-amber-500/90 uppercase font-black tracking-wider border-b border-slate-800 text-[11px]">
@@ -892,17 +894,9 @@ export default function App() {
                           </td>
 
                           <td className="p-4 space-y-0.5">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-bold text-slate-100">
-                                {order.customerName || 'Sanjay Agarwal'}
-                              </h4>
-                              <button 
-                                onClick={() => setSelectedCustomerCRM(uniqueCustomers.find(c => c.contactNumber === order.contactNumber || c.customerName === order.customerName))}
-                                className="text-[10px] text-amber-400 hover:underline bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold"
-                              >
-                                CRM Profile
-                              </button>
-                            </div>
+                            <h4 className="text-sm font-bold text-slate-100">
+                              {order.customerName || 'Sanjay Agarwal'}
+                            </h4>
                             <p className="text-[11px] text-slate-400">
                               {order.contactNumber || '+91 98765 12345'}
                             </p>
@@ -1019,7 +1013,6 @@ export default function App() {
           </div>
         )}
 
-        {/* OFF ORDERS TAB */}
         {activeTab === 'off-orders' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
@@ -1119,7 +1112,6 @@ export default function App() {
           </div>
         )}
 
-        {/* CRM CLIENT DIRECTORY TAB */}
         {activeTab === 'crm' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
@@ -1163,7 +1155,6 @@ export default function App() {
           </div>
         )}
 
-        {/* NEW ORDER INTAKE TAB */}
         {activeTab === 'new-order' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-4 sm:p-6 max-w-4xl mx-auto shadow-2xl">
             <div className="border-b border-slate-800 pb-4 mb-6">
@@ -1430,14 +1421,13 @@ export default function App() {
           </div>
         )}
 
-        {/* KARIGAR WORK ORDERS TAB */}
         {activeTab === 'karigar' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
             <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
-              <Send className="w-5 h-5" /> Active Karigar Work Orders ({orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).length})
+              <Send className="w-5 h-5" /> Active Karigar Work Orders ({activeKarigarOrders.length})
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).map((order, idx) => (
+              {activeKarigarOrders.map((order, idx) => (
                 <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
                   <div className="flex justify-between items-start">
                     <div>
@@ -1459,7 +1449,6 @@ export default function App() {
           </div>
         )}
 
-        {/* ATTENDANCE TAB */}
         {activeTab === 'attendance' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
             <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
@@ -1480,7 +1469,6 @@ export default function App() {
         )}
       </main>
 
-      {/* MODAL: LOGIN / SIGN IN */}
       {showLoginModal && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-3xl max-w-md w-full p-6 space-y-6 shadow-2xl">
@@ -1542,7 +1530,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL: CUSTOMER CRM PROFILE HISTORY WITH CORRECT STATUS */}
       {selectedCustomerCRM && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1588,7 +1575,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL: ASSIGN / UPDATE KARIGAR WITH OVERRIDE FIELDS */}
       {selectedOrderForKarigar && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -1728,7 +1714,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL: WHATSAPP SLIP PREVIEW */}
       {whatsappModalData && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#181b22] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
