@@ -499,6 +499,8 @@ const activeKarigarOrders = useMemo(() => {
       const sheetNo = String(o.orderSheetNo || '').trim();
       const isDelivered = (o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered';
       const pStatus = (o.productStatus || '').toLowerCase();
+      
+      // Match the exact same logic used by your "Under Process" box counter (69)
       const isUnderProcess = !isDelivered && o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
       
       if (isUnderProcess && sheetNo) {
