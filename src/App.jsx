@@ -934,8 +934,16 @@ export default function App() {
                               >
                                 Place order
                               </button>
+                            ) : (order.productStatus || '').toLowerCase() === 'ready but bill pending' || (order.productStatus || '').toLowerCase().includes('bill pending') ? (
+                              <span className="text-xs font-bold text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
+                                Received from Karigar
+                              </span>
+                            ) : (order.productStatus || '').toLowerCase() === 'packed' ? (
+                              <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-3 py-1.5 rounded-xl border border-purple-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
+                                Ready for Delivery
+                              </span>
                             ) : (
-                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default">
+                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default whitespace-nowrap">
                                 <Check className="w-3.5 h-3.5 text-emerald-400" />
                                 <span>Assigned to Karigar</span>
                               </span>
