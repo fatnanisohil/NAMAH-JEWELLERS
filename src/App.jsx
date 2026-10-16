@@ -200,20 +200,20 @@ export default function App() {
     let userName = loginNameInput;
 
     if (userName === 'Admin') {
-      if (loginPinInput !== '1234') {
+      if (loginPinInput !== 'ADMIN') {
         alert("❌ Incorrect Admin PIN!");
         return;
       }
       assignedRole = 'Admin';
       userName = 'Senior Admin';
     } else if (userName === 'Amardeep') {
-      if (loginPinInput !== '5678') {
+      if (loginPinInput !== 'AMARDEEP') {
         alert("❌ Incorrect PIN for Amardeep!");
         return;
       }
       assignedRole = 'Order Processing';
     } else if (userName === 'Gautam') {
-      if (loginPinInput !== '4321') {
+      if (loginPinInput !== 'GAUTAM') {
         alert("❌ Incorrect PIN for Gautam!");
         return;
       }
@@ -668,7 +668,7 @@ const activeKarigarOrders = useMemo(() => {
               onClick={() => setShowLoginModal(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
             >
-              <LogIn className="w-4 h-4 text-slate-950" /> Admin / Order Person Login
+              <LogIn className="w-4 h-4 text-slate-950" /> LOGIN
             </button>
           )}
         </div>
@@ -1487,9 +1487,9 @@ const activeKarigarOrders = useMemo(() => {
                   value={loginNameInput}
                   onChange={(e) => setLoginNameInput(e.target.value)}
                 >
-                  <option value="Admin">Admin (PIN: 1234)</option>
-                  <option value="Amardeep">Amardeep (PIN: 5678)</option>
-                  <option value="Gautam">Gautam (PIN: 4321)</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Amardeep">Amardeep</option>
+                  <option value="Gautam">Gautam</option>
                 </select>
               </div>
 
