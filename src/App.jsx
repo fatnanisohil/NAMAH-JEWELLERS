@@ -1734,25 +1734,56 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all">
+            {/* Image Preview inside the Modal */}
+            {formatDriveUrl(whatsappModalData) && (
+              <div className="flex justify-center bg-slate-900 p-2 rounded-xl border border-slate-800">
+                <img 
+                  src={formatDriveUrl(whatsappModalData)} 
+                  alt="Karigar Slip Preview" 
+                  className="max-h-48 rounded-lg object-contain"
+                />
+              </div>
+            )}
+
+            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all max-h-40 overflow-y-auto">
               {buildWhatsAppMessage(whatsappModalData)}
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(buildWhatsAppMessage(whatsappModalData));
-                  alert("Message caption copied to clipboard!");
+                onClick={async () => {
+                  const imageUrl = formatDriveUrl(whatsappModalData);
+                  const caption = buildWhatsAppMessage(whatsappModalData);
+                  
+                  // Copy text caption to clipboard
+                  navigator.clipboard.writeText(caption);
+
+                  // Try to copy image to clipboard if possible
+                  if (imageUrl && navigator.clipboard && window.ClipboardItem) {
+                    try {
+                      const imgResponse = await fetch(imageUrl);
+                      const blob = await imgResponse.blob();
+                      await navigator.clipboard.write([
+                        new ClipboardItem({ [blob.type]: blob })
+                      ]);
+                      alert("Image & caption copied! You can now press Ctrl+V directly into WhatsApp.");
+                    } catch (err) {
+                      alert("Caption copied! (Direct image copy blocked by browser, you can save/download image if needed).");
+                    }
+                  } else {
+                    alert("Caption copied to clipboard!");
+                  }
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1 cursor-pointer"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center justify-center gap-1 cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5" /> Copy Message
+                <Copy className="w-3.5 h-3.5" /> Copy Image & Caption
               </button>
+
               <a
                 href={'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMessage(whatsappModalData))}
                 target="_blank"
                 rel="noreferrer"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
               >
                 <Send className="w-4 h-4" /> Open WhatsApp
               </a>
