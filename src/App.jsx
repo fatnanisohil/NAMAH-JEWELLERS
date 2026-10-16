@@ -1090,7 +1090,7 @@ export default function App() {
                           <td className="p-4 space-y-1">
                             <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem}</span>
                             <div className="text-[11px] text-slate-300">
-                              {order.goldWeight && <span>Gold: <strong className="text-amber-400">{order.goldWeight}g</strong></span>}
+                              {order.goldWeight && <span>Gold: <strong className="text-amber-400">{order.goldWeight}</strong></span>}
                             </div>
                           </td>
                           <td className="p-4">
