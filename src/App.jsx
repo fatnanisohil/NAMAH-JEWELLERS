@@ -380,7 +380,7 @@ export default function App() {
     }
   };
 
-  const handleKarigarSubmit = (e) => {
+  const handleKarigarSubmit = async (e) => {
     e.preventDefault();
     if (!isAuthorizedToEdit) {
       alert("🔒 Access Restricted: Please login as Admin or Order Desk to assign orders to karigars.");
@@ -408,53 +408,36 @@ export default function App() {
     setSelectedOrderForKarigar(null);
     setWhatsappModalData(updatedOrder);
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = GOOGLE_SHEETS_API_URL;
-    form.target = 'hidden_iframe';
+    try {
+      const payload = new URLSearchParams();
+      payload.append('action', 'updateKarigar');
+      payload.append('orderSheetNo', updatedOrder.orderSheetNo || '');
+      payload.append('customerName', updatedOrder.customerName || '');
+      payload.append('contactNumber', updatedOrder.contactNumber || '');
+      payload.append('jewelleryItem', updatedOrder.jewelleryItem || '');
+      payload.append('tagNumber', updatedOrder.tagNumber || '');
+      payload.append('karigarName', updatedOrder.karigarName || '');
+      payload.append('goldWeight', updatedOrder.goldWeight || '');
+      payload.append('diamondWeight', updatedOrder.diamondWeight || '');
+      payload.append('colorTone', updatedOrder.colorTone || '');
+      payload.append('purity', updatedOrder.purity || '');
+      payload.append('size', updatedOrder.size || '');
+      payload.append('orderDescription', updatedOrder.orderDescription || '');
+      payload.append('karigarDod', extractDateOnly(updatedOrder.karigarDod) || '');
+      payload.append('alterationDetails', updatedOrder.alterationDetails || '');
 
-    const payloadFields = {
-      action: 'updateKarigar',
-      orderSheetNo: updatedOrder.orderSheetNo || '',
-      customerName: updatedOrder.customerName || '',
-      contactNumber: updatedOrder.contactNumber || '',
-      jewelleryItem: updatedOrder.jewelleryItem || '',
-      tagNumber: updatedOrder.tagNumber || '',
-      karigarName: updatedOrder.karigarName || '',
-      goldWeight: updatedOrder.goldWeight || '',
-      diamondWeight: updatedOrder.diamondWeight || '',
-      colorTone: updatedOrder.colorTone || '',
-      purity: updatedOrder.purity || '',
-      size: updatedOrder.size || '',
-      orderDescription: updatedOrder.orderDescription || '',
-      karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
-      alterationDetails: updatedOrder.alterationDetails || ''
-    };
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: payload
+      });
 
-    let iframe = document.getElementById('hidden_iframe');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      iframe.name = 'hidden_iframe';
-      iframe.id = 'hidden_iframe';
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+      setTimeout(() => {
+        fetchOrdersFromSheet();
+      }, 2000);
+    } catch (err) {
+      console.error("Error saving Karigar Work Order:", err);
     }
-
-    Object.keys(payloadFields).forEach(key => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = payloadFields[key];
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    setTimeout(() => {
-      fetchOrdersFromSheet();
-    }, 2000);
   };
 
   const exportCSV = () => {
@@ -546,7 +529,7 @@ export default function App() {
       if (filterStatus !== 'ALL') {
         const pStatus = (order.productStatus || '--Not Assign--').toLowerCase();
         if (filterStatus === 'Under Process') {
-          if (!(order.isOn && pStatus !== 'ready but bill pending' && pStatus !== 'packed' && !pStatus.includes('not assign'))) {
+          if (!(order.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign')))) {
             return false;
           }
         } else if (filterStatus === 'Ready but bill pending') {
@@ -720,7 +703,7 @@ export default function App() {
                     {orders.filter(o => {
                       if ((o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered') return false;
                       const pStatus = (o.productStatus || '').toLowerCase();
-                      return o.isOn && (pStatus === 'under process' || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
+                      return o.isOn && (pStatus.includes('process') || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
                     }).length}
                   </h3>
                 </div>
