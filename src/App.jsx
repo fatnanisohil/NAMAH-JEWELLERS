@@ -1434,10 +1434,10 @@ export default function App() {
         {activeTab === 'karigar' && (
           <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
             <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
-              <Send className="w-5 h-5" /> Active Karigar Work Orders ({orders.filter(o => o.placingStatus || o.karigarName).length})
+              <Send className="w-5 h-5" /> Active Karigar Work Orders ({orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).length})
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {orders.filter(o => o.placingStatus || o.karigarName).map((order, idx) => (
+              {orders.filter(o => (o.orderStatus || '').toLowerCase() !== 'delivered' && (o.productStatus || '').toLowerCase() !== 'delivered' && (o.karigarName || (o.productStatus && !o.productStatus.includes('Not Assign') && o.productStatus !== ''))).map((order, idx) => (
                 <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 space-y-3 shadow-xl">
                   <div className="flex justify-between items-start">
                     <div>
