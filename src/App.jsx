@@ -150,6 +150,11 @@ export default function App() {
             const localMatch = prevOrders.find(o => o.orderSheetNo === serverOrder.orderSheetNo && o.tagNumber === serverOrder.tagNumber);
             return {
               ...serverOrder,
+              // Automatically normalize text fields to Proper Case
+              customerName: toProperCase(serverOrder.customerName),
+              jewelleryItem: toProperCase(serverOrder.jewelleryItem),
+              karigarName: toProperCase(serverOrder.karigarName),
+              colorTone: toProperCase(serverOrder.colorTone),
               imagePreviewLocal: localMatch?.imagePreviewLocal || serverOrder.imagePreviewLocal,
               imageBase64: localMatch?.imageBase64 || serverOrder.imageBase64,
               productImageLink: localMatch?.imagePreviewLocal || localMatch?.imageBase64 || serverOrder.productImageLink,
@@ -1743,3 +1748,9 @@ const activeKarigarOrders = useMemo(() => {
     </div>
   );
 }
+
+// ADDING FOR PROPER TEXT
+const toProperCase = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    return str.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+  };
