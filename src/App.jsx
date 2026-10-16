@@ -465,8 +465,8 @@ export default function App() {
   };
 
   const exportCSV = () => {
-    const headers = "Order Sheet,Customer,Contact,Item,Purity,Gold Wt,Diamond Wt,Sales,Executive,Status\n";
-    const rows = orders.map(o => `${o.orderSheetNo},${o.customerName},${o.contactNumber},${o.jewelleryItem},${o.purity},${o.goldWeight},${o.diamondWeight},${o.salesPerson},${o.orderPerson},${o.productStatus}`).join("\n");
+    const headers = "Order Sheet,Tag Number,Customer,Contact,Item,Purity,Gold Wt,Diamond Wt,Sales,Executive,Status\n";
+    const rows = orders.map(o => `${o.orderSheetNo},${o.tagNumber},${o.customerName},${o.contactNumber},${o.jewelleryItem},${o.purity},${o.goldWeight},${o.diamondWeight},${o.salesPerson},${o.orderPerson},${o.productStatus}`).join("\n");
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -975,7 +975,7 @@ export default function App() {
                                   ? 'bg-slate-900/40 border-slate-800 text-slate-600 cursor-not-allowed opacity-50'
                                   : order.isOn
                                   ? 'bg-[#13231f] border-emerald-500/40 text-emerald-400 cursor-pointer'
-                                  : 'bg-slate-900 border-slate-700 text-slate-500 cursor-not-allowed opacity-60'
+                                  : 'bg-slate-900 border-slate-700 text-slate-500 cursor-pointer'
                               }`}
                             >
                               {isAssigned && order.isOn ? (
@@ -1050,6 +1050,7 @@ export default function App() {
                     <th className="p-4">CUSTOMER & SALES</th>
                     <th className="p-4">JEWELLERY SPECS</th>
                     <th className="p-4">ORDER EXECUTIVE</th>
+                    <th className="p-4">PLACE ORDER ➔</th>
                     <th className="p-4 text-center">ON/OFF TOGGLE</th>
                     <th className="p-4">PRODUCT STATUS</th>
                   </tr>
@@ -1057,7 +1058,7 @@ export default function App() {
                 <tbody className="divide-y divide-slate-800/60">
                   {offOrders.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="p-12 text-center text-slate-500 text-sm font-medium">
+                      <td colSpan="8" className="p-12 text-center text-slate-500 text-sm font-medium">
                         No OFF orders found.
                       </td>
                     </tr>
@@ -1092,6 +1093,31 @@ export default function App() {
                             <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
                               {order.orderPerson || 'Amardeep'}
                             </span>
+                          </td>
+                          <td className="p-4">
+                            {!isAssigned ? (
+                              <button
+                                onClick={() => {
+                                  if (!isAuthorizedToEdit) {
+                                    alert("🔒 Restricted: Please login as Admin or Order Desk to place orders.");
+                                    return;
+                                  }
+                                  setSelectedOrderForKarigar(order);
+                                }}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
+                                  isAuthorizedToEdit
+                                    ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
+                                    : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
+                                }`}
+                              >
+                                Place order
+                              </button>
+                            ) : (
+                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default">
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Assigned to Karigar</span>
+                              </span>
+                            )}
                           </td>
                           <td className="p-4 text-center">
                             <button
@@ -1633,6 +1659,7 @@ export default function App() {
             <form onSubmit={handleKarigarSubmit} className="space-y-4">
               <div className="p-3 bg-[#111318] rounded-xl text-xs text-slate-300 space-y-1">
                 <p><strong className="text-amber-400">Order Sheet:</strong> {selectedOrderForKarigar.orderSheetNo}</p>
+                <p><strong className="text-amber-400">Tag Number:</strong> {selectedOrderForKarigar.tagNumber}</p>
                 <p><strong className="text-amber-400">Jewellery Item:</strong> {selectedOrderForKarigar.jewelleryItem}</p>
               </div>
 
