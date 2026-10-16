@@ -419,7 +419,7 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const params = new URLSearchParams({
+      const payload = new URLSearchParams({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -437,8 +437,9 @@ export default function App() {
         alterationDetails: updatedOrder.alterationDetails || ''
       });
 
-      await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
-        method: "GET"
+      await fetch(GOOGLE_SHEETS_API_URL, {
+        method: "POST",
+        body: payload
       });
 
       setTimeout(() => {
