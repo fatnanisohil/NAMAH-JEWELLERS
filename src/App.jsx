@@ -1734,60 +1734,28 @@ export default function App() {
               </button>
             </div>
 
-            {/* Image Preview inside the Modal */}
-            {formatDriveUrl(whatsappModalData) && (
-              <div className="flex justify-center bg-slate-900 p-2 rounded-xl border border-slate-800">
-                <img 
-                  src={formatDriveUrl(whatsappModalData)} 
-                  alt="Karigar Slip Preview" 
-                  className="max-h-40 rounded-lg object-contain"
-                />
-              </div>
-            )}
-
-            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all max-h-36 overflow-y-auto">
+            <div className="p-4 bg-[#111318] border border-slate-800 rounded-xl text-xs font-mono text-emerald-300 whitespace-pre-wrap select-all">
               {buildWhatsAppMessage(whatsappModalData)}
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2">
               <button
-                onClick={async () => {
-                  const imageUrl = formatDriveUrl(whatsappModalData);
-                  const captionText = buildWhatsAppMessage(whatsappModalData);
-
-                  try {
-                    // Fetch image and convert to blob to bypass cross-origin clipboard locks
-                    const response = await fetch(imageUrl);
-                    const blob = await response.blob();
-
-                    // Check if browser supports writing multi-format items (Image + Text)
-                    if (navigator.clipboard && window.ClipboardItem) {
-                      const clipboardItemData = {
-                        [blob.type || 'image/png']: blob,
-                        'text/plain': new Blob([captionText], { type: 'text/plain' })
-                      };
-                      
-                      await navigator.clipboard.write([new ClipboardItem(clipboardItemData)]);
-                      alert("✅ Image and Caption copied together! Now go to WhatsApp Web and press Ctrl+V.");
-                      window.open('https://web.whatsapp.com/', '_blank');
-                    } else {
-                      // Fallback if ClipboardItem isn't fully supported
-                      navigator.clipboard.writeText(captionText);
-                      alert("✅ Caption copied! (Your browser restricted direct image clipboard writing, please use download if needed).");
-                      window.open('https://web.whatsapp.com/', '_blank');
-                    }
-                  } catch (err) {
-                    console.error("Clipboard copy failed:", err);
-                    // Fallback to text copy if image fetch is blocked by CORS
-                    navigator.clipboard.writeText(captionText);
-                    alert("⚠️ Copied text caption. (Direct image transfer was blocked by network security rules, but text is ready to paste!).");
-                    window.open('https://web.whatsapp.com/', '_blank');
-                  }
+                onClick={() => {
+                  navigator.clipboard.writeText(buildWhatsAppMessage(whatsappModalData));
+                  alert("Message caption copied to clipboard!");
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-600/20"
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1 cursor-pointer"
               >
-                <Copy className="w-4 h-4" /> Copy Image & Caption Together
+                <Copy className="w-3.5 h-3.5" /> Copy Message
               </button>
+              <a
+                href={'https://wa.me/?text=' + encodeURIComponent(buildWhatsAppMessage(whatsappModalData))}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+              >
+                <Send className="w-4 h-4" /> Open WhatsApp
+              </a>
             </div>
           </div>
         </div>
