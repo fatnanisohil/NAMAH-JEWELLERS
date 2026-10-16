@@ -218,6 +218,13 @@ export default function App() {
         return;
       }
       assignedRole = 'Order Processing';
+    } else if (userName === 'Viewer') {
+      if (loginPinInput !== '0000') { // You can change '0000' to any PIN you want
+        alert("❌ Incorrect Viewer PIN!");
+        return;
+      }
+      assignedRole = 'Viewer';
+      userName = 'Guest Viewer';
     }
 
     setCurrentUserRole(assignedRole);
@@ -1472,7 +1479,7 @@ const activeKarigarOrders = useMemo(() => {
                 <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-amber-400">
                   <Lock className="w-4 h-4" />
                 </div>
-                <h3 className="text-md font-bold text-amber-400">Admin & Order Desk Login</h3>
+                <h3 className="text-md font-bold text-amber-400">Secure Access Login</h3>
               </div>
               <button onClick={() => setShowLoginModal(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -1481,15 +1488,16 @@ const activeKarigarOrders = useMemo(() => {
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Select Authorized Role</label>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Select Access Level</label>
                 <select
                   className="w-full bg-[#111318] border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500 cursor-pointer"
                   value={loginNameInput}
                   onChange={(e) => setLoginNameInput(e.target.value)}
                 >
-                  <option value="Admin">Admin</option>
-                  <option value="Amardeep">Amardeep</option>
-                  <option value="Gautam">Gautam</option>
+                  <option value="Admin">Admin (PIN: 1234)</option>
+                  <option value="Amardeep">Amardeep (PIN: 5678)</option>
+                  <option value="Gautam">Gautam (PIN: 4321)</option>
+                  <option value="Viewer">Read-Only View (PIN: 0000)</option>
                 </select>
               </div>
 
@@ -1497,7 +1505,7 @@ const activeKarigarOrders = useMemo(() => {
                 <label className="block text-xs font-bold text-amber-400 mb-1.5 uppercase">Security PIN</label>
                 <input
                   type="password"
-                  placeholder="Enter your PIN..."
+                  placeholder="Enter security PIN..."
                   className="w-full bg-[#111318] border border-amber-500/50 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-400"
                   value={loginPinInput}
                   onChange={(e) => setLoginPinInput(e.target.value)}
@@ -1517,7 +1525,7 @@ const activeKarigarOrders = useMemo(() => {
                   type="submit"
                   className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20"
                 >
-                  Sign In
+                  Authenticate
                 </button>
               </div>
             </form>
