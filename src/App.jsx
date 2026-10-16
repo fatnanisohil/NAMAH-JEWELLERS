@@ -717,7 +717,11 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Under Process</p>
                   <h3 className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-                    {orders.filter(o => o.isOn && (o.productStatus === 'Under Process' || o.productStatus === 'Assigned') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => {
+                      if ((o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered') return false;
+                      const pStatus = (o.productStatus || '').toLowerCase();
+                      return o.isOn && (pStatus === 'under process' || pStatus === 'assigned' || pStatus === '' || pStatus.includes('not assign'));
+                    }).length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -732,7 +736,11 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ready but bill pending</p>
                   <h3 className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-                    {orders.filter(o => o.isOn && (o.productStatus === 'Ready but bill pending' || o.productStatus === 'Ready but Bill Pending') && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => {
+                      if ((o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered') return false;
+                      const pStatus = (o.productStatus || '').toLowerCase();
+                      return o.isOn && (pStatus === 'ready but bill pending' || pStatus.includes('bill pending'));
+                    }).length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
@@ -747,7 +755,11 @@ export default function App() {
                 <div>
                   <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Packed</p>
                   <h3 className="text-xl sm:text-2xl font-black text-purple-400 mt-1">
-                    {orders.filter(o => o.isOn && o.productStatus === 'Packed' && (o.orderStatus || '').toLowerCase() !== 'delivered').length}
+                    {orders.filter(o => {
+                      if ((o.orderStatus || '').toLowerCase() === 'delivered' || (o.productStatus || '').toLowerCase() === 'delivered') return false;
+                      const pStatus = (o.productStatus || '').toLowerCase();
+                      return o.isOn && pStatus === 'packed';
+                    }).length}
                   </h3>
                 </div>
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
