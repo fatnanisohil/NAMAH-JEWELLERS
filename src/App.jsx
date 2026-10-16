@@ -434,7 +434,7 @@ export default function App() {
     setWhatsappModalData(updatedOrder);
 
     try {
-      const payload = JSON.stringify({
+      const params = new URLSearchParams({
         action: 'updateKarigar',
         orderSheetNo: updatedOrder.orderSheetNo || '',
         customerName: updatedOrder.customerName || '',
@@ -449,15 +449,11 @@ export default function App() {
         size: updatedOrder.size || '',
         orderDescription: updatedOrder.orderDescription || '',
         karigarDod: extractDateOnly(updatedOrder.karigarDod) || '',
-        alterationDetails: updatedOrder.alterationDetails || '',
-        productStatus: 'Under Process',
-        isOn: 'ON'
+        alterationDetails: updatedOrder.alterationDetails || ''
       });
 
-      await fetch(GOOGLE_SHEETS_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: payload
+      await fetch(`${GOOGLE_SHEETS_API_URL}?${params.toString()}`, {
+        method: "GET"
       });
 
       setTimeout(() => {
@@ -1054,7 +1050,6 @@ export default function App() {
                     <th className="p-4">CUSTOMER & SALES</th>
                     <th className="p-4">JEWELLERY SPECS</th>
                     <th className="p-4">ORDER EXECUTIVE</th>
-                    <th className="p-4">PLACE ORDER ➔</th>
                     <th className="p-4 text-center">ON/OFF TOGGLE</th>
                     <th className="p-4">PRODUCT STATUS</th>
                   </tr>
@@ -1062,7 +1057,7 @@ export default function App() {
                 <tbody className="divide-y divide-slate-800/60">
                   {offOrders.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="p-12 text-center text-slate-500 text-sm font-medium">
+                      <td colSpan="7" className="p-12 text-center text-slate-500 text-sm font-medium">
                         No OFF orders found.
                       </td>
                     </tr>
@@ -1090,38 +1085,13 @@ export default function App() {
                           <td className="p-4 space-y-1">
                             <span className="font-bold text-slate-200 text-sm">{order.jewelleryItem}</span>
                             <div className="text-[11px] text-slate-300">
-                              {order.goldWeight && <span>Gold: <strong className="text-amber-400">{order.goldWeight}</strong></span>}
+                              {order.goldWeight && <span>Gold: <strong className="text-amber-400">{order.goldWeight}g</strong></span>}
                             </div>
                           </td>
                           <td className="p-4">
                             <span className="px-3 py-1.5 rounded-xl bg-[#232d42] text-blue-300 border border-blue-500/30 text-xs font-bold inline-block">
                               {order.orderPerson || 'Amardeep'}
                             </span>
-                          </td>
-                          <td className="p-4">
-                            {!isAssigned ? (
-                              <button
-                                onClick={() => {
-                                  if (!isAuthorizedToEdit) {
-                                    alert("🔒 Restricted: Please login as Admin or Order Desk to place orders.");
-                                    return;
-                                  }
-                                  setSelectedOrderForKarigar(order);
-                                }}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1 cursor-pointer ${
-                                  isAuthorizedToEdit
-                                    ? 'text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
-                                    : 'text-slate-500 bg-slate-900 border-slate-800 opacity-70'
-                                }`}
-                              >
-                                Place order
-                              </button>
-                            ) : (
-                              <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/30 inline-flex items-center gap-1.5 select-none cursor-default">
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Assigned to Karigar</span>
-                              </span>
-                            )}
                           </td>
                           <td className="p-4 text-center">
                             <button
