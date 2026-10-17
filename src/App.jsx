@@ -149,6 +149,7 @@ export default function App() {
               jewelleryItem: toProperCase(serverOrder.jewelleryItem),
               karigarName: toProperCase(serverOrder.karigarName),
               colorTone: toProperCase(serverOrder.colorTone),
+              orderDescription: toProperCase(serverOrder.orderDescription),
               imagePreviewLocal: localMatch?.imagePreviewLocal || serverOrder.imagePreviewLocal,
               imageBase64: localMatch?.imageBase64 || serverOrder.imageBase64,
               productImageLink: localMatch?.imagePreviewLocal || localMatch?.imageBase64 || serverOrder.productImageLink,
