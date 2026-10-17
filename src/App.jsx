@@ -58,20 +58,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const [attendance, setAttendance] = useState(() => {
-    const saved = localStorage.getItem('namah_attendance');
-    return saved ? JSON.parse(saved) : [
-      { name: 'Sohil', role: 'Sales', status: 'Present', checkIn: '10:00 AM', checkOut: '07:30 PM', workingHours: '9.5' },
-      { name: 'Mohit', role: 'Sales', status: 'Present', checkIn: '10:15 AM', checkOut: '07:30 PM', workingHours: '9.25' },
-      { name: 'Hema', role: 'Sales', status: 'Late', checkIn: '10:45 AM', checkOut: '07:30 PM', workingHours: '8.75' },
-      { name: 'Akansha', role: 'Sales', status: 'Present', checkIn: '09:55 AM', checkOut: '07:30 PM', workingHours: '9.5' },
-      { name: 'Yogita', role: 'Sales', status: 'On Field', checkIn: '11:00 AM', checkOut: '--', workingHours: '--' },
-      { name: 'Ziya', role: 'Sales', status: 'Present', checkIn: '10:05 AM', checkOut: '07:30 PM', workingHours: '9.4' },
-      { name: 'Deepika', role: 'Sales', status: 'Half Day', checkIn: '10:00 AM', checkOut: '02:30 PM', workingHours: '4.5' },
-      { name: 'Amardeep', role: 'Order Processing', status: 'Present', checkIn: '09:45 AM', checkOut: '08:00 PM', workingHours: '10.25' },
-      { name: 'Gautam', role: 'Order Processing', status: 'Present', checkIn: '09:50 AM', checkOut: '08:00 PM', workingHours: '10.1' }
-    ];
-  });
+
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -190,9 +177,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('namah_attendance', JSON.stringify(attendance));
-  }, [attendance]);
+ 
 
   useEffect(() => {
   try {
@@ -659,16 +644,7 @@ export default function App() {
           >
             <Send className="w-3.5 h-3.5" /> Karigar ({activeKarigarOrders.length})
           </button>
-          <button
-            onClick={() => setActiveTab('attendance')}
-            className={`px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'attendance'
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-lg shadow-amber-500/25 font-extrabold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" /> Attendance
-          </button>
+          
         </nav>
 
         <div className="hidden sm:flex items-center gap-3">
@@ -1530,24 +1506,7 @@ export default function App() {
           );
         })()}
 
-        {activeTab === 'attendance' && (
-          <div className="bg-[#181b22] border border-slate-800/90 rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-lg font-black text-amber-400 mb-4 flex items-center gap-2">
-              <UserCheck className="w-5 h-5" /> Staff Attendance Register
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {attendance.map((staff, idx) => (
-                <div key={idx} className="bg-[#111318] p-4 rounded-2xl border border-slate-800 flex justify-between items-center shadow-xl">
-                  <div>
-                    <h4 className="font-bold text-slate-200 text-sm">{staff.name}</h4>
-                    <p className="text-xs text-slate-500">{staff.role}</p>
-                  </div>
-                  <span className="text-xs text-amber-400 font-bold bg-amber-500/10 px-3 py-1 rounded-lg border border-amber-500/20">{staff.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
       </main>
 
       {showLoginModal && (
