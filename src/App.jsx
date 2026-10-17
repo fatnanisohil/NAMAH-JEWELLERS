@@ -278,9 +278,10 @@ export default function App() {
     setSubmitting(true);
 
     try {
+      // Prioritize imageBase64 so Google Apps Script receives the actual file data to upload to Drive
       const submissionData = {
         ...formData,
-        productImageLink: formData.imagePreviewLocal || formData.imageBase64 || formData.productImageLink
+        productImageLink: formData.imageBase64 || formData.imagePreviewLocal || ''
       };
 
       const payload = new URLSearchParams();
