@@ -181,7 +181,13 @@ export default function App() {
 
   useEffect(() => {
   try {
-    localStorage.setItem('namah_local_orders', JSON.stringify(orders));
+    // Strip heavy base64 strings before saving to prevent QuotaExceededError
+    const lightOrders = orders.map(o => ({
+      ...o,
+      imageBase64: undefined,
+      imagePreviewLocal: undefined
+    }));
+    localStorage.setItem('namah_local_orders', JSON.stringify(lightOrders));
   } catch (error) {
     console.error("Local storage quota exceeded:", error);
   }
