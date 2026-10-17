@@ -914,10 +914,11 @@ export default function App() {
   </p>
   
   {/* Added Order Description */}
-  <div className="mt-1 text-xs text-amber-300/90 pt-1 border-t border-slate-800">
-    <span className="font-medium text-amber-400">ORDER DESCRIPTION - </span>
-    <span className="text-gray-300">{order.orderDescription || order.remarks || '--'}</span>
-  </div>
+  {/* Added Order Description with text wrap */}
+<div className="mt-1 text-xs text-amber-300/90 pt-1 border-t border-slate-800 break-words whitespace-normal max-w-[280px]">
+  <span className="font-medium text-amber-400">ORDER DESCRIPTION - </span>
+  <span className="text-gray-300">{order.orderDescription || order.remarks || '--'}</span>
+</div>
 </td>
 
                           <td className="p-4">
