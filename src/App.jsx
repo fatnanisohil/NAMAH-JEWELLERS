@@ -78,7 +78,7 @@ export default function App() {
     contactNumber: '',
     orderType: '',
     orderSheetNo: '',
-    salesPerson: 'Sohil',
+    salesPerson: '',
     jewelleryItem: '',
     tagNumber: '',
     productImageLink: '',
@@ -93,7 +93,7 @@ export default function App() {
     orderDescription: '',
     orderTakenDate: new Date().toISOString().split('T')[0],
     deliveryDate: '',
-    orderPerson: 'Amardeep',
+    orderPerson: '',
     specialRemarks: ''
   });
 
@@ -303,7 +303,7 @@ export default function App() {
         contactNumber: '',
         orderType: '',
         orderSheetNo: '',
-        salesPerson: 'Sohil',
+        salesPerson: '',
         jewelleryItem: '',
         tagNumber: '',
         productImageLink: '',
@@ -318,7 +318,7 @@ export default function App() {
         orderDescription: '',
         orderTakenDate: new Date().toISOString().split('T')[0],
         deliveryDate: '',
-        orderPerson: 'Amardeep',
+        orderPerson: '',
         specialRemarks: ''
       });
     } catch (err) {
