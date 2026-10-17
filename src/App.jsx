@@ -195,9 +195,12 @@ export default function App() {
   }, [attendance]);
 
   useEffect(() => {
+  try {
     localStorage.setItem('namah_local_orders', JSON.stringify(orders));
-  }, [orders]);
-
+  } catch (error) {
+    console.error("Local storage quota exceeded:", error);
+  }
+}, [orders]);
   useEffect(() => {
     localStorage.setItem('namah_logged_in', isLoggedIn);
     localStorage.setItem('namah_user_role', currentUserRole);
